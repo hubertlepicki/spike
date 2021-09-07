@@ -63,7 +63,7 @@ defmodule Spike.Struct do
           struct
           |> Ecto.Changeset.cast(params, fields -- embeds)
 
-        dirty_fields = (struct.__dirty_fields__ ++ changeset.changes) |> Map.keys()
+        dirty_fields = struct.__dirty_fields__ ++ (changeset.changes |> Map.keys())
 
         changeset
         |> Ecto.Changeset.put_change(:__dirty_fields__, Enum.uniq(dirty_fields))

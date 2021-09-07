@@ -134,6 +134,7 @@ defmodule SpikeTest do
 
       form =
         form
+        |> Spike.update(hubert_ref, %{name: "Huberto"})
         |> Spike.update(hubert_ref, %{name: "Umberto"})
         |> Spike.update(form_ref, %{accepts_conditions: "false"})
 
