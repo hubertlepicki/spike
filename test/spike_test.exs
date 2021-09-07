@@ -70,6 +70,23 @@ defmodule SpikeTest do
   end
 
   describe "Spike.valid?/1 & Spike.errors/1" do
+    test "allows validations" do
+      form =
+        Test.SimpleForm.new(%{
+          last_name: "Spiegel",
+          accepts_conditions: "false"
+        })
+
+      refute Spike.valid?(form)
+
+      assert Spike.errors(form) == %{
+               form.ref => %{
+                 accepts_conditions: [acceptance: "must be accepted"],
+                 first_name: [presence: "must be present"]
+               }
+             }
+    end
+
     test "validates nested struct" do
       form = Test.ComplexForm.new(%{})
 
@@ -93,23 +110,6 @@ defmodule SpikeTest do
 
       assert Spike.errors(form)[form.ref] == %{
                accepts_conditions: [acceptance: "must be accepted"]
-             }
-    end
-
-    test "allows validations" do
-      form =
-        Test.SimpleForm.new(%{
-          last_name: "Spiegel",
-          accepts_conditions: "false"
-        })
-
-      refute Spike.valid?(form)
-
-      assert Spike.errors(form) == %{
-               form.ref => %{
-                 accepts_conditions: [acceptance: "must be accepted"],
-                 first_name: [presence: "must be present"]
-               }
              }
     end
   end
@@ -220,6 +220,76 @@ defmodule SpikeTest do
 
       assert hd(form.partners).name == "Hubert"
       assert hd(form.partners |> Enum.reverse()).name == "Wojciech"
+    end
+  end
+
+  describe "ditry tracking" do
+    setup do
+      form =
+        Test.ComplexForm.new(%{
+          company: %{
+            name: "AmberBit",
+            country: "Poland"
+          },
+          partners: [
+            %{name: "Hubert"},
+            %{name: "Wojciech"}
+          ],
+          accepts_conditions: "true"
+        })
+
+      {:ok, form: form}
+    end
+
+    test "should be pristine initially", %{form: form} do
+      assert Spike.dirty_fields(form) == %{}
+    end
+
+    test "should track the fields that were updated", %{form: form} = initial do
+      form =
+        form
+        |> Spike.update(form.ref, %{accepts_conditions: "false"})
+
+      assert Spike.dirty_fields(form) == %{form.ref => [:accepts_conditions]}
+
+      form =
+        form
+        |> Spike.append(form.ref, :partners, %{name: "John"})
+
+      assert Spike.dirty_fields(form) == %{form.ref => [:accepts_conditions, :partners]}
+
+      hubert_ref = hd(form.partners).ref
+
+      form =
+        form
+        |> Spike.update(hubert_ref, %{name: "Umberto"})
+
+      assert Spike.dirty_fields(form) == %{
+               form.ref => [:accepts_conditions, :partners],
+               hubert_ref => [:name]
+             }
+
+      form =
+        form
+        |> Spike.delete(form.company.ref)
+
+      assert Spike.dirty_fields(form) == %{
+               form.ref => [:accepts_conditions, :partners, :company],
+               hubert_ref => [:name]
+             }
+
+      form = initial.form |> Spike.make_dirty()
+
+      assert Spike.dirty_fields(form) == %{
+               form.company.ref => [:name, :country],
+               form.ref => [:accepts_conditions, :company, :partners],
+               hd(form.partners).ref => [:name],
+               hd(form.partners |> Enum.reverse()).ref => [:name]
+             }
+
+      form = form |> Spike.make_pristine()
+
+      assert Spike.dirty_fields(form) == %{}
     end
   end
 end

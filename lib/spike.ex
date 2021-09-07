@@ -80,25 +80,27 @@ defmodule Spike do
   def delete(struct, ref) do
     embeds = struct.__struct__.__schema__(:embeds)
 
-    delete_embeds(struct, ref, embeds)
+    {struct, dirty_embeds} = delete_embeds(struct, ref, embeds, [])
+
+    %{struct | :__dirty_fields__ => (struct.__dirty_fields__ ++ dirty_embeds) |> Enum.uniq()}
   end
 
-  defp delete_embeds(struct, _ref, []), do: struct
+  defp delete_embeds(struct, _ref, [], dirty_embeds), do: {struct, dirty_embeds}
 
-  defp delete_embeds(struct, ref, [embed | rest]) do
+  defp delete_embeds(struct, ref, [embed | rest], dirty_embeds) do
     embed_field = Map.get(struct, embed)
 
     case embed_field do
       nil ->
-        delete_embeds(struct, ref, rest)
+        delete_embeds(struct, ref, rest, dirty_embeds)
 
       list when is_list(list) ->
         %{struct | embed => Enum.map(embed_field, &delete(&1, ref)) |> Enum.filter(& &1)}
-        |> delete_embeds(ref, rest)
+        |> delete_embeds(ref, rest, dirty_embeds ++ [embed])
 
       _ ->
         %{struct | embed => delete(embed_field, ref)}
-        |> delete_embeds(ref, rest)
+        |> delete_embeds(ref, rest, dirty_embeds ++ [embed])
     end
   end
 
@@ -129,5 +131,43 @@ defmodule Spike do
         %{struct | embed => append(embed_field, ref, field, params)}
         |> append_embeds(ref, field, params, rest)
     end
+  end
+
+  def dirty_fields(struct) do
+    struct
+    |> traverse_structs_getting_dirty_fields()
+    |> List.flatten()
+    |> Enum.filter(& &1)
+    |> Enum.into(%{})
+  end
+
+  defp traverse_structs_getting_dirty_fields(nil), do: []
+
+  defp traverse_structs_getting_dirty_fields(list) when is_list(list) do
+    list
+    |> Enum.map(&traverse_structs_getting_dirty_fields(&1))
+  end
+
+  defp traverse_structs_getting_dirty_fields(current_struct) do
+    embeds = current_struct.__struct__.__schema__(:embeds)
+    dirty_fields = current_struct.__dirty_fields__
+
+    if dirty_fields != [] do
+      [{current_struct.ref, dirty_fields}]
+    else
+      []
+    end ++
+      (embeds
+       |> Enum.map(fn embed ->
+         traverse_structs_getting_dirty_fields(Map.get(current_struct, embed))
+       end))
+  end
+
+  def make_dirty(struct) do
+    struct.__struct__.make_dirty(struct)
+  end
+
+  def make_pristine(struct) do
+    struct.__struct__.make_pristine(struct)
   end
 end
