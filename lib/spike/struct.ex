@@ -32,109 +32,257 @@ defmodule Spike.Struct do
       end
 
       def changeset(struct, params) do
-        fields = __MODULE__.__schema__(:fields) -- [:__dirty_fields__, :ref]
-        embeds = __MODULE__.__schema__(:embeds)
-
-        struct
-        |> ensure_has_ref()
-        |> Ecto.Changeset.cast(params, fields -- embeds)
-        |> cast_embeds(embeds)
+        Spike.Struct.changeset(struct, params)
       end
+    end
+  end
 
-      defp ensure_has_ref(%{ref: nil} = struct) do
-        %{struct | ref: Ecto.UUID.generate()}
-      end
+  def changeset(struct, params) do
+    struct
+    |> ensure_has_ref()
+    |> Ecto.Changeset.cast(params, fields(struct) -- embeds(struct))
+    |> cast_embeds(embeds(struct))
+  end
 
-      defp ensure_has_ref(struct), do: struct
+  def update(struct, params) do
+    changeset =
+      struct
+      |> Ecto.Changeset.cast(params, fields(struct) -- embeds(struct))
 
-      defp cast_embeds(changeset, []), do: changeset
+    dirty_fields = struct.__dirty_fields__ ++ (changeset.changes |> Map.keys())
 
-      defp cast_embeds(changeset, [h | t]) do
-        changeset
-        |> Ecto.Changeset.cast_embed(h)
-        |> cast_embeds(t)
-      end
+    changeset
+    |> Ecto.Changeset.put_change(:__dirty_fields__, Enum.uniq(dirty_fields))
+    |> Ecto.Changeset.apply_changes()
+  end
 
-      def update(struct, params) do
-        fields = __MODULE__.__schema__(:fields) -- [:__dirty_fields__, :ref]
-        embeds = __MODULE__.__schema__(:embeds)
+  def append(struct, field, params) do
+    %{cardinality: :many, related: mod} = embed(struct, field)
 
-        changeset =
-          struct
-          |> Ecto.Changeset.cast(params, fields -- embeds)
+    current_structs = Map.get(struct, field)
+    dirty_fields = struct.__dirty_fields__ ++ [field]
 
-        dirty_fields = struct.__dirty_fields__ ++ (changeset.changes |> Map.keys())
+    %{
+      struct
+      | field => current_structs ++ [mod.new(params)],
+        :__dirty_fields__ => Enum.uniq(dirty_fields)
+    }
+  end
 
-        changeset
-        |> Ecto.Changeset.put_change(:__dirty_fields__, Enum.uniq(dirty_fields))
-        |> Ecto.Changeset.apply_changes()
-      end
+  def make_dirty(struct) do
+    dirty_fields = (fields(struct) ++ embeds(struct)) |> Enum.uniq()
 
-      def append(struct, field, params) do
-        %{cardinality: :many, related: mod} = __MODULE__.__schema__(:embed, field)
+    %{struct | :__dirty_fields__ => dirty_fields}
+    |> make_embeds_dirty(embeds(struct))
+  end
 
-        current_structs = Map.get(struct, field)
-        dirty_fields = struct.__dirty_fields__ ++ [field]
+  def make_pristine(struct) do
+    %{struct | :__dirty_fields__ => []}
+    |> make_embeds_pristine(embeds(struct))
+  end
 
-        %{
-          struct
-          | field => current_structs ++ [mod.new(params)],
-            :__dirty_fields__ => Enum.uniq(dirty_fields)
-        }
-      end
+  def errors(struct) do
+    struct
+    |> traverse_structs(&get_errors/1)
+    |> List.flatten()
+    |> Enum.filter(& &1)
+    |> Enum.into(%{})
+  end
 
-      def make_dirty(struct) do
-        fields = __MODULE__.__schema__(:fields) -- [:__dirty_fields__, :ref]
-        embeds = __MODULE__.__schema__(:embeds)
+  def dirty_fields(struct) do
+    struct
+    |> traverse_structs(&get_dirty_fields/1)
+    |> List.flatten()
+    |> Enum.filter(& &1)
+    |> Enum.into(%{})
+  end
 
-        dirty_fields = (fields ++ embeds) |> Enum.uniq()
+  def delete(%{ref: ref} = _struct, ref) do
+    nil
+  end
 
-        %{struct | :__dirty_fields__ => dirty_fields}
-        |> make_embeds_dirty(embeds)
-      end
+  def delete(struct, ref) do
+    {struct, dirty_embeds} = delete_embeds(struct, ref, embeds(struct), [])
 
-      defp make_embeds_dirty(struct, []), do: struct
+    %{struct | :__dirty_fields__ => (struct.__dirty_fields__ ++ dirty_embeds) |> Enum.uniq()}
+  end
 
-      defp make_embeds_dirty(struct, [embed | rest]) do
-        %{struct | embed => make_embed_dirty(Map.get(struct, embed))}
-        |> make_embeds_dirty(rest)
-      end
+  def update(%{ref: ref} = struct, ref, params) do
+    update(struct, params)
+  end
 
-      defp make_embed_dirty(nil), do: nil
+  def update(struct, ref, params) do
+    update_embeds(struct, ref, params, embeds(struct))
+  end
 
-      defp make_embed_dirty(list) when is_list(list) do
-        list
-        |> Enum.map(& &1.__struct__.make_dirty(&1))
-      end
+  def append(%{ref: ref} = struct, ref, field, params) do
+    append(struct, field, params)
+  end
 
-      defp make_embed_dirty(struct) do
-        struct.__struct__.make_dirty(struct)
-      end
+  def append(struct, ref, field, params) do
+    append_embeds(struct, ref, field, params, embeds(struct))
+  end
 
-      def make_pristine(struct) do
-        embeds = __MODULE__.__schema__(:embeds)
+  defp fields(struct) when is_struct(struct) do
+    fields(struct.__struct__)
+  end
 
-        %{struct | :__dirty_fields__ => []}
-        |> make_embeds_pristine(embeds)
-      end
+  defp fields(mod) when is_atom(mod) do
+    mod.__schema__(:fields) -- [:__dirty_fields__, :ref]
+  end
 
-      defp make_embeds_pristine(struct, []), do: struct
+  defp embeds(struct) when is_struct(struct) do
+    embeds(struct.__struct__)
+  end
 
-      defp make_embeds_pristine(struct, [embed | rest]) do
-        %{struct | embed => make_embed_pristine(Map.get(struct, embed))}
-        |> make_embeds_pristine(rest)
-      end
+  defp embeds(mod) when is_atom(mod) do
+    mod.__schema__(:embeds)
+  end
 
-      defp make_embed_pristine(nil), do: nil
+  defp embed(struct, name) when is_struct(struct) do
+    struct.__struct__.__schema__(:embed, name)
+  end
 
-      defp make_embed_pristine(list) when is_list(list) do
-        list
-        |> Enum.map(& &1.__struct__.make_pristine(&1))
-      end
+  defp ensure_has_ref(%{ref: nil} = struct) do
+    %{struct | ref: Ecto.UUID.generate()}
+  end
 
-      defp make_embed_pristine(struct) do
-        struct.__struct__.make_pristine(struct)
-      end
+  defp ensure_has_ref(struct), do: struct
+
+  defp cast_embeds(changeset, []), do: changeset
+
+  defp cast_embeds(changeset, [h | t]) do
+    changeset
+    |> Ecto.Changeset.cast_embed(h)
+    |> cast_embeds(t)
+  end
+
+  defp make_embeds_dirty(struct, []), do: struct
+
+  defp make_embeds_dirty(struct, [embed | rest]) do
+    %{struct | embed => make_embed_dirty(Map.get(struct, embed))}
+    |> make_embeds_dirty(rest)
+  end
+
+  defp make_embed_dirty(nil), do: nil
+
+  defp make_embed_dirty(list) when is_list(list) do
+    list
+    |> Enum.map(&make_dirty(&1))
+  end
+
+  defp make_embed_dirty(struct) do
+    make_dirty(struct)
+  end
+
+  defp make_embeds_pristine(struct, []), do: struct
+
+  defp make_embeds_pristine(struct, [embed | rest]) do
+    %{struct | embed => make_embed_pristine(Map.get(struct, embed))}
+    |> make_embeds_pristine(rest)
+  end
+
+  defp make_embed_pristine(nil), do: nil
+
+  defp make_embed_pristine(list) when is_list(list) do
+    list
+    |> Enum.map(&make_pristine(&1))
+  end
+
+  defp make_embed_pristine(struct) do
+    make_pristine(struct)
+  end
+
+  defp get_errors(struct) do
+    struct
+    |> Vex.errors()
+    |> Enum.reduce(%{}, fn {:error, field, type, message}, acc ->
+      list = acc[field] || []
+
+      acc
+      |> Map.put(field, list ++ [{type, message}])
+    end)
+  end
+
+  defp get_dirty_fields(struct) do
+    struct.__dirty_fields__
+  end
+
+  defp traverse_structs(nil, _callback), do: []
+
+  defp traverse_structs(list, callback) when is_list(list) do
+    list
+    |> Enum.map(&traverse_structs(&1, callback))
+  end
+
+  defp traverse_structs(current_struct, callback) do
+    collected = callback.(current_struct)
+
+    if Enum.count(collected) > 0 do
+      [{current_struct.ref, collected}]
+    else
+      []
+    end ++
+      (embeds(current_struct)
+       |> Enum.map(fn embed ->
+         traverse_structs(Map.get(current_struct, embed), callback)
+       end))
+  end
+
+  defp update_embeds(struct, _ref, _params, []), do: struct
+
+  defp update_embeds(struct, ref, params, [embed | rest]) do
+    embed_field = Map.get(struct, embed)
+
+    case embed_field do
+      nil ->
+        update_embeds(struct, ref, params, rest)
+
+      list when is_list(list) ->
+        %{struct | embed => Enum.map(embed_field, &update(&1, ref, params))}
+        |> update_embeds(ref, params, rest)
+
+      _ ->
+        %{struct | embed => update(embed_field, ref, params)}
+        |> update_embeds(ref, params, rest)
+    end
+  end
+
+  defp delete_embeds(struct, _ref, [], dirty_embeds), do: {struct, dirty_embeds}
+
+  defp delete_embeds(struct, ref, [embed | rest], dirty_embeds) do
+    embed_field = Map.get(struct, embed)
+
+    case embed_field do
+      nil ->
+        delete_embeds(struct, ref, rest, dirty_embeds)
+
+      list when is_list(list) ->
+        %{struct | embed => Enum.map(embed_field, &delete(&1, ref)) |> Enum.filter(& &1)}
+        |> delete_embeds(ref, rest, dirty_embeds ++ [embed])
+
+      _ ->
+        %{struct | embed => delete(embed_field, ref)}
+        |> delete_embeds(ref, rest, dirty_embeds ++ [embed])
+    end
+  end
+
+  defp append_embeds(struct, _ref, _field, _params, []), do: struct
+
+  defp append_embeds(struct, ref, field, params, [embed | rest]) do
+    embed_field = Map.get(struct, embed)
+
+    case embed_field do
+      nil ->
+        append_embeds(struct, ref, field, params, rest)
+
+      list when is_list(list) ->
+        %{struct | embed => Enum.map(embed_field, &append(&1, ref, field, params))}
+        |> append_embeds(ref, field, params, rest)
+
+      _ ->
+        %{struct | embed => append(embed_field, ref, field, params)}
+        |> append_embeds(ref, field, params, rest)
     end
   end
 end
