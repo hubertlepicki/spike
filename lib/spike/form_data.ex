@@ -1,4 +1,4 @@
-defmodule Spike.Struct do
+defmodule Spike.FormData do
   defmacro define_schema(do: block) do
     quote do
       embedded_schema do
@@ -11,14 +11,14 @@ defmodule Spike.Struct do
   defmacro __using__(_opts) do
     quote do
       use Ecto.Schema
-      require Spike.Struct
-      import Spike.Struct, only: [define_schema: 1]
+      require Spike.FormData
+      import Spike.FormData, only: [define_schema: 1]
       use Vex.Struct
 
       @primary_key {:ref, :binary_id, autogenerate: false}
       @foreign_key_type :binary_id
 
-      @before_compile Spike.Struct
+      @before_compile Spike.FormData
     end
   end
 
@@ -32,7 +32,7 @@ defmodule Spike.Struct do
       end
 
       def changeset(struct, params) do
-        Spike.Struct.changeset(struct, params)
+        Spike.FormData.changeset(struct, params)
       end
     end
   end

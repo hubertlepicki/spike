@@ -1,10 +1,10 @@
 defmodule SpikeTest do
   use ExUnit.Case
 
-  describe "Spike.Struct.new/1" do
+  describe "Spike.FormDataData.new/1" do
     test "initializes simple form struct from params" do
       form =
-        Test.SimpleForm.new(%{
+        Test.SimpleFormData.new(%{
           first_name: "Spike",
           last_name: "Spiegel",
           age: "36",
@@ -21,7 +21,7 @@ defmodule SpikeTest do
 
     test "autogenerates ref field" do
       form =
-        Test.SimpleForm.new(%{
+        Test.SimpleFormData.new(%{
           first_name: "Spike",
           last_name: "Spiegel",
           age: "36",
@@ -34,7 +34,7 @@ defmodule SpikeTest do
 
     test "initializes nested struct" do
       form =
-        Test.ComplexForm.new(%{
+        Test.ComplexFormData.new(%{
           company: %{
             name: "AmberBit",
             country: "Poland"
@@ -57,7 +57,7 @@ defmodule SpikeTest do
 
     test "sets embeds_many fields to [] by default" do
       form =
-        Test.ComplexForm.new(%{
+        Test.ComplexFormData.new(%{
           company: %{
             name: "AmberBit",
             country: "Poland"
@@ -72,7 +72,7 @@ defmodule SpikeTest do
   describe "Spike.valid?/1 & Spike.errors/1" do
     test "allows validations" do
       form =
-        Test.SimpleForm.new(%{
+        Test.SimpleFormData.new(%{
           last_name: "Spiegel",
           accepts_conditions: "false"
         })
@@ -88,7 +88,7 @@ defmodule SpikeTest do
     end
 
     test "validates nested struct" do
-      form = Test.ComplexForm.new(%{})
+      form = Test.ComplexFormData.new(%{})
 
       refute Spike.valid?(form)
 
@@ -99,7 +99,7 @@ defmodule SpikeTest do
                }
              }
 
-      form = Test.ComplexForm.new(%{company: %{}})
+      form = Test.ComplexFormData.new(%{company: %{}})
 
       refute Spike.valid?(form)
 
@@ -117,7 +117,7 @@ defmodule SpikeTest do
   describe "Spike.update/2" do
     test "updates the structs and casts data" do
       form =
-        Test.ComplexForm.new(%{
+        Test.ComplexFormData.new(%{
           company: %{
             name: "AmberBit",
             country: "Poland"
@@ -146,7 +146,7 @@ defmodule SpikeTest do
 
     test "updates the structs and changes validation" do
       form =
-        Test.ComplexForm.new(%{
+        Test.ComplexFormData.new(%{
           company: %{
             name: "AmberBit",
             country: "Poland"
@@ -170,7 +170,7 @@ defmodule SpikeTest do
   describe "Spike.delete/2" do
     test "deletes the struct by ref" do
       form =
-        Test.ComplexForm.new(%{
+        Test.ComplexFormData.new(%{
           company: %{
             name: "AmberBit",
             country: "Poland"
@@ -206,7 +206,7 @@ defmodule SpikeTest do
   describe "Spike.append/2" do
     test "appends the newly initialized struct at the end of the embeds_many list" do
       form =
-        Test.ComplexForm.new(%{
+        Test.ComplexFormData.new(%{
           company: %{
             name: "AmberBit",
             country: "Poland"
@@ -227,7 +227,7 @@ defmodule SpikeTest do
   describe "ditry tracking" do
     setup do
       form =
-        Test.ComplexForm.new(%{
+        Test.ComplexFormData.new(%{
           company: %{
             name: "AmberBit",
             country: "Poland"

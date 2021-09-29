@@ -1,6 +1,6 @@
-defmodule Test.ComplexForm do
+defmodule Test.ComplexFormData do
   defmodule CompanyForm do
-    use Spike.Struct
+    use Spike.FormData
 
     define_schema do
       field(:name, :string)
@@ -11,14 +11,14 @@ defmodule Test.ComplexForm do
   end
 
   defmodule PartnerForm do
-    use Spike.Struct
+    use Spike.FormData
 
     define_schema do
       field(:name, :string)
     end
   end
 
-  use Spike.Struct
+  use Spike.FormData
 
   define_schema do
     field(:accepts_conditions, :boolean)

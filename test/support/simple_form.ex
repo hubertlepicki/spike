@@ -1,5 +1,5 @@
-defmodule Test.SimpleForm do
-  use Spike.Struct
+defmodule Test.SimpleFormData do
+  use Spike.FormData
 
   embedded_schema do
     field(:first_name, :string)
