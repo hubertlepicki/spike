@@ -1,7 +1,7 @@
 defmodule Test.SimpleFormData do
   use Spike.FormData
 
-  embedded_schema do
+  form_fields do
     field(:first_name, :string)
     field(:last_name, :string)
     field(:age, :integer)

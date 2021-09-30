@@ -2,7 +2,7 @@ defmodule SpikeTest do
   use ExUnit.Case
 
   describe "Spike.FormDataData.new/1" do
-    test "initializes simple form struct from params" do
+    test "initializes simple form form_data from params" do
       form =
         Test.SimpleFormData.new(%{
           first_name: "Spike",
@@ -32,7 +32,7 @@ defmodule SpikeTest do
       assert form.ref != nil
     end
 
-    test "initializes nested struct" do
+    test "initializes nested form_data" do
       form =
         Test.ComplexFormData.new(%{
           company: %{
@@ -87,7 +87,7 @@ defmodule SpikeTest do
              }
     end
 
-    test "validates nested struct" do
+    test "validates nested form_data" do
       form = Test.ComplexFormData.new(%{})
 
       refute Spike.valid?(form)
@@ -115,7 +115,7 @@ defmodule SpikeTest do
   end
 
   describe "Spike.update/2" do
-    test "updates the structs and casts data" do
+    test "updates the form_datas and casts data" do
       form =
         Test.ComplexFormData.new(%{
           company: %{
@@ -144,7 +144,7 @@ defmodule SpikeTest do
       assert hubert_ref == hd(form.partners).ref
     end
 
-    test "updates the structs and changes validation" do
+    test "updates the form_datas and changes validation" do
       form =
         Test.ComplexFormData.new(%{
           company: %{
@@ -168,7 +168,7 @@ defmodule SpikeTest do
   end
 
   describe "Spike.delete/2" do
-    test "deletes the struct by ref" do
+    test "deletes the form_data by ref" do
       form =
         Test.ComplexFormData.new(%{
           company: %{
@@ -204,7 +204,7 @@ defmodule SpikeTest do
   end
 
   describe "Spike.append/2" do
-    test "appends the newly initialized struct at the end of the embeds_many list" do
+    test "appends the newly initialized form_data at the end of the embeds_many list" do
       form =
         Test.ComplexFormData.new(%{
           company: %{
@@ -291,6 +291,21 @@ defmodule SpikeTest do
       form = form |> Spike.make_pristine()
 
       assert Spike.dirty_fields(form) == %{}
+
+      form = initial.form
+
+      company_ref = form.company.ref
+
+      form =
+        form
+        |> Spike.update(hubert_ref, %{name: "Umberto"})
+        |> Spike.update(company_ref, %{name: "AmberBito"})
+
+      assert Spike.dirty_fields(form) == %{
+               form.ref => [:partners, :company],
+               hubert_ref => [:name],
+               company_ref => [:name]
+             }
     end
   end
 end

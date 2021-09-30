@@ -1,7 +1,7 @@
 defmodule Spike.FormData do
-  defmacro define_schema(do: block) do
+  defmacro form_fields(do: block) do
     quote do
-      embedded_schema do
+      Ecto.Schema.embedded_schema do
         unquote(block)
         field(:__dirty_fields__, {:array, :string}, default: [])
       end
@@ -10,13 +10,32 @@ defmodule Spike.FormData do
 
   defmacro __using__(_opts) do
     quote do
-      use Ecto.Schema
-      require Spike.FormData
-      import Spike.FormData, only: [define_schema: 1]
-      use Vex.Struct
+      require Ecto.Schema
 
+      # the below are done to avoid using Ecto.Schema.__using__
       @primary_key {:ref, :binary_id, autogenerate: false}
       @foreign_key_type :binary_id
+      @timestamps_opts []
+      @schema_prefix nil
+      @schema_context nil
+      @field_source_mapper fn x -> x end
+
+      Module.register_attribute(__MODULE__, :ecto_primary_keys, accumulate: true)
+      Module.register_attribute(__MODULE__, :ecto_fields, accumulate: true)
+      Module.register_attribute(__MODULE__, :ecto_query_fields, accumulate: true)
+      Module.register_attribute(__MODULE__, :ecto_field_sources, accumulate: true)
+      Module.register_attribute(__MODULE__, :ecto_assocs, accumulate: true)
+      Module.register_attribute(__MODULE__, :ecto_embeds, accumulate: true)
+      Module.register_attribute(__MODULE__, :ecto_raw, accumulate: true)
+      Module.register_attribute(__MODULE__, :ecto_autogenerate, accumulate: true)
+      Module.register_attribute(__MODULE__, :ecto_autoupdate, accumulate: true)
+      Module.register_attribute(__MODULE__, :ecto_redact_fields, accumulate: true)
+      Module.put_attribute(__MODULE__, :ecto_derive_inspect_for_redacted_fields, true)
+      Module.put_attribute(__MODULE__, :ecto_autogenerate_id, nil)
+
+      require Spike.FormData
+      import Spike.FormData, only: [form_fields: 1]
+      use Vex.Struct
 
       @before_compile Spike.FormData
     end
@@ -241,10 +260,21 @@ defmodule Spike.FormData do
       list when is_list(list) ->
         %{struct | embed => Enum.map(embed_field, &update(&1, ref, params))}
         |> update_embeds(ref, params, rest)
+        |> maybe_mark_embed_as_dirty(struct, embed)
 
       _ ->
         %{struct | embed => update(embed_field, ref, params)}
         |> update_embeds(ref, params, rest)
+        |> maybe_mark_embed_as_dirty(struct, embed)
+    end
+  end
+
+  defp maybe_mark_embed_as_dirty(updated_struct, struct, embed) do
+    if Map.get(updated_struct, embed) != Map.get(struct, embed) do
+      dirty_fields = Enum.uniq(updated_struct.__dirty_fields__ ++ [embed])
+      %{updated_struct | __dirty_fields__: dirty_fields}
+    else
+      updated_struct
     end
   end
 
