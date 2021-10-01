@@ -27,7 +27,8 @@ defmodule Spike.MixProject do
   defp deps do
     [
       {:ecto, "~> 3.7"},
-      {:vex, "~> 0.9"}
+      {:vex, "~> 0.9"},
+      {:surface, "~> 0.5"}
     ]
   end
 end
