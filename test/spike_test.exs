@@ -32,6 +32,19 @@ defmodule SpikeTest do
       assert form.ref != nil
     end
 
+    test "autogenerates meta field" do
+      form =
+        Test.SimpleFormData.new(%{
+          first_name: "Spike",
+          last_name: "Spiegel",
+          age: "36",
+          email: "spike@example.com",
+          accepts_conditions: "true"
+        })
+
+      assert form.meta == %{}
+    end
+
     test "initializes nested form_data" do
       form =
         Test.ComplexFormData.new(%{
@@ -344,6 +357,45 @@ defmodule SpikeTest do
     test "should convert given form data to JSON", %{form: form} do
       assert Spike.to_json(form) ==
                "{\"accepts_conditions\":true,\"company\":{\"country\":\"Poland\",\"name\":\"AmberBit\"},\"partners\":[{\"name\":\"Hubert\"},{\"name\":\"Wojciech\"}]}"
+    end
+  end
+
+  describe ".set_meta/3" do
+    test "sets new meta value" do
+      form =
+        Test.SimpleFormData.new(%{
+          first_name: "Spike",
+          last_name: "Spiegel",
+          age: "36",
+          email: "spike@example.com",
+          accepts_conditions: "true"
+        })
+
+      form = Spike.set_meta(form, form.ref, %{foo: :bar})
+
+      assert form.meta.foo == :bar
+      assert Spike.dirty_fields(form) == %{}
+    end
+
+    test "sets new meta value on embeds" do
+      form =
+        Test.ComplexFormData.new(%{
+          company: %{
+            name: "AmberBit",
+            country: "Poland"
+          },
+          partners: [
+            %{name: "Hubert"},
+            %{name: "Wojciech"}
+          ],
+          accepts_conditions: "true"
+        })
+
+      hubert_ref = hd(form.partners).ref
+
+      form = Spike.set_meta(form, hubert_ref, %{foo: :bar})
+
+      assert hd(form.partners).meta.foo == :bar
     end
   end
 end

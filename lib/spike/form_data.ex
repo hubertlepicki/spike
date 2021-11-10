@@ -4,6 +4,7 @@ defmodule Spike.FormData do
       Ecto.Schema.embedded_schema do
         unquote(block)
         field(:__dirty_fields__, {:array, :string}, default: [])
+        field(:meta, :map, default: %{})
       end
     end
   end
@@ -147,7 +148,7 @@ defmodule Spike.FormData do
   end
 
   defp fields(mod) when is_atom(mod) do
-    mod.__schema__(:fields) -- [:__dirty_fields__, :ref]
+    mod.__schema__(:fields) -- [:__dirty_fields__, :ref, :meta]
   end
 
   defp embeds(struct) when is_struct(struct) do
@@ -313,6 +314,33 @@ defmodule Spike.FormData do
       _ ->
         %{struct | embed => append(embed_field, ref, field, params)}
         |> append_embeds(ref, field, params, rest)
+    end
+  end
+
+  def set_meta(%{ref: ref} = form, ref, value) do
+    %{form | meta: value}
+  end
+
+  def set_meta(form, ref, value) do
+    set_embeds_meta(form, ref, value, embeds(form))
+  end
+
+  defp set_embeds_meta(struct, _ref, _params, []), do: struct
+
+  defp set_embeds_meta(struct, ref, value, [embed | rest]) do
+    embed_field = Map.get(struct, embed)
+
+    case embed_field do
+      nil ->
+        set_embeds_meta(struct, ref, value, rest)
+
+      list when is_list(list) ->
+        %{struct | embed => Enum.map(embed_field, &set_meta(&1, ref, value))}
+        |> set_embeds_meta(ref, value, rest)
+
+      _ ->
+        %{struct | embed => set_meta(embed_field, ref, value)}
+        |> set_embeds_meta(ref, value, rest)
     end
   end
 end

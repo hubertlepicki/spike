@@ -3,7 +3,7 @@ defmodule Spike.FormData.Serialization do
     fields =
       form_data
       |> Map.keys()
-      |> Enum.filter(&(&1 not in [:__dirty_fields__, :__struct__, :ref]))
+      |> Enum.filter(&(&1 not in [:__dirty_fields__, :__struct__, :ref, :meta]))
 
     form_data
     |> Map.take(fields)

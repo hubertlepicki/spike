@@ -10,6 +10,7 @@ defmodule Spike do
   defdelegate update(struct, ref, params), to: Spike.FormData
   defdelegate append(struct, ref, field, params), to: Spike.FormData
   defdelegate delete(struct, ref), to: Spike.FormData
+  defdelegate set_meta(struct, ref, value), to: Spike.FormData
   defdelegate to_params(struct), to: Spike.FormData.Serialization
-  defdelegate to_json(struc), to: Spike.FormData.Serialization
+  defdelegate to_json(struct), to: Spike.FormData.Serialization
 end
