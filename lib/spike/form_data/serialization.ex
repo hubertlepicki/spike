@@ -20,9 +20,8 @@ defmodule Spike.FormData.Serialization do
 
   def to_params(otherwise), do: otherwise
 
-  def to_json(form_data) do
-    form_data
-    |> to_params()
+  def to_json(params) do
+    params
     |> Application.get_env(:phoenix, :json_library, Jason).encode!()
   end
 end

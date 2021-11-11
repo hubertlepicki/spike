@@ -44,16 +44,29 @@ defmodule Spike.FormData do
 
   defmacro __before_compile__(_) do
     quote do
-      def new(params) do
+      def new(params, meta \\ %{}) do
         %__MODULE__{}
         |> changeset(params)
         |> Ecto.Changeset.apply_changes()
         |> Map.put(:ref, Ecto.UUID.generate())
+        |> Map.put(:meta, meta)
       end
 
       def changeset(struct, params) do
         Spike.FormData.changeset(struct, params)
       end
+
+      def to_params(form) do
+        Spike.FormData.Serialization.to_params(form)
+      end
+
+      def to_json(form) do
+        form
+        |> to_params()
+        |> Spike.FormData.Serialization.to_json()
+      end
+
+      defoverridable new: 1, new: 2, changeset: 2, to_params: 1, to_json: 1
     end
   end
 

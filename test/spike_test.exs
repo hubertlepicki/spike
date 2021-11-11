@@ -45,6 +45,22 @@ defmodule SpikeTest do
       assert form.meta == %{}
     end
 
+    test "initializes meta field if given" do
+      form =
+        Test.SimpleFormData.new(
+          %{
+            first_name: "Spike",
+            last_name: "Spiegel",
+            age: "36",
+            email: "spike@example.com",
+            accepts_conditions: "true"
+          },
+          %{foo: :bar}
+        )
+
+      assert form.meta == %{foo: :bar}
+    end
+
     test "initializes nested form_data" do
       form =
         Test.ComplexFormData.new(%{
@@ -346,7 +362,7 @@ defmodule SpikeTest do
     end
 
     test "should convert the given form data to map of params", %{form: form} do
-      assert Spike.to_params(form) == %{
+      assert form.__struct__.to_params(form) == %{
                "company" => %{
                  "name" => "AmberBit",
                  "country" => "Poland"
@@ -360,7 +376,7 @@ defmodule SpikeTest do
     end
 
     test "should convert given form data to JSON", %{form: form} do
-      assert Spike.to_json(form) ==
+      assert form.__struct__.to_json(form) ==
                "{\"accepts_conditions\":true,\"company\":{\"country\":\"Poland\",\"name\":\"AmberBit\"},\"partners\":[{\"name\":\"Hubert\"},{\"name\":\"Wojciech\"}]}"
     end
   end
