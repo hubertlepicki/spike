@@ -419,4 +419,9 @@ defmodule SpikeTest do
       assert hd(form.partners).meta.foo == :bar
     end
   end
+
+  test "allows overwriting callbacks" do
+    form = Test.CustomizedForm.new(%{foo: :bar})
+    form.__struct__.to_params(form) == %{elo: :ziom}
+  end
 end

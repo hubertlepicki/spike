@@ -1,6 +1,16 @@
 defmodule Spike.FormData do
+  @callback new(params :: map) :: map
+  @callback new(params :: map, meta :: map) :: map
+  @callback changeset(struct :: term, params :: map) :: term
+  @callback to_params(form :: term) :: map
+  @callback to_json(form :: term) :: binary
+
+  @optional_callbacks new: 1, new: 2, changeset: 2, to_params: 1, to_json: 1
+
   defmacro __using__(do: block) do
     quote location: :keep do
+      @behaviour Spike.FormData
+
       require Ecto.Schema
 
       # the below are done to avoid using Ecto.Schema.__using__
