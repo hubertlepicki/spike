@@ -1,6 +1,6 @@
 defmodule Spike.FormData do
   defmacro __using__(do: block) do
-    quote do
+    quote location: :keep do
       require Ecto.Schema
 
       # the below are done to avoid using Ecto.Schema.__using__
