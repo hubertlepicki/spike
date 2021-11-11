@@ -1,15 +1,5 @@
 defmodule Spike.FormData do
-  defmacro form_fields(do: block) do
-    quote do
-      Ecto.Schema.embedded_schema do
-        unquote(block)
-        field(:__dirty_fields__, {:array, :string}, default: [])
-        field(:meta, :map, default: %{})
-      end
-    end
-  end
-
-  defmacro __using__(_opts) do
+  defmacro __using__(do: block) do
     quote do
       require Ecto.Schema
 
@@ -35,15 +25,14 @@ defmodule Spike.FormData do
       Module.put_attribute(__MODULE__, :ecto_autogenerate_id, nil)
 
       require Spike.FormData
-      import Spike.FormData, only: [form_fields: 1]
       use Vex.Struct
 
-      @before_compile Spike.FormData
-    end
-  end
+      Ecto.Schema.embedded_schema do
+        unquote(block)
+        field(:__dirty_fields__, {:array, :string}, default: [])
+        field(:meta, :map, default: %{})
+      end
 
-  defmacro __before_compile__(_) do
-    quote do
       def new(params, meta \\ %{}) do
         %__MODULE__{}
         |> changeset(params)

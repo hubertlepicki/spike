@@ -1,7 +1,5 @@
 defmodule Test.SimpleFormData do
-  use Spike.FormData
-
-  form_fields do
+  use Spike.FormData do
     field(:first_name, :string)
     field(:last_name, :string)
     field(:age, :integer)
