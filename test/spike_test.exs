@@ -82,7 +82,7 @@ defmodule SpikeTest do
     end
   end
 
-  describe "Spike.valid?/1 & Spike.errors/1" do
+  describe "Spike.valid?/1 && Spike.errors/1 && Spike.has_errors?/3 && Spike.has_errors?/4" do
     test "allows validations" do
       form =
         Test.SimpleFormData.new(%{
@@ -98,6 +98,11 @@ defmodule SpikeTest do
                  first_name: [presence: "must be present"]
                }
              }
+
+      assert Spike.has_errors?(form, form.ref, :first_name)
+      assert Spike.has_errors?(form, form.ref, :first_name, "must be present")
+      refute Spike.has_errors?(form, form.ref, :last_name)
+      refute Spike.has_errors?(form, form.ref, :last_name, "must be present")
     end
 
     test "validates nested form_data" do
