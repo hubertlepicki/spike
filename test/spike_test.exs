@@ -238,7 +238,7 @@ defmodule SpikeTest do
   end
 
   describe "Spike.append/2" do
-    test "appends the newly initialized form_data at the end of the embeds_many list" do
+    test "appends and initializes form_data at the end of the embeds_many list" do
       form =
         Test.ComplexFormData.new(%{
           company: %{
@@ -255,6 +255,36 @@ defmodule SpikeTest do
 
       assert hd(form.partners).name == "Hubert"
       assert hd(form.partners |> Enum.reverse()).name == "Wojciech"
+    end
+
+    test "appends already initialzied form data at the end of embeds_many list" do
+      form =
+        Test.ComplexFormData.new(%{
+          company: %{
+            name: "AmberBit",
+            country: "Poland"
+          },
+          accepts_conditions: "true"
+        })
+
+      form =
+        form
+        |> Spike.append(
+          form.ref,
+          :partners,
+          Test.ComplexFormData.PartnerFormData.new(%{name: "Hubert"}, %{foo: :bar})
+        )
+        |> Spike.append(
+          form.ref,
+          :partners,
+          Test.ComplexFormData.PartnerFormData.new(%{name: "Wojciech"})
+        )
+
+      assert hd(form.partners).name == "Hubert"
+      assert hd(form.partners).meta == %{foo: :bar}
+
+      assert hd(form.partners |> Enum.reverse()).name == "Wojciech"
+      assert hd(form.partners |> Enum.reverse()).meta == %{}
     end
   end
 

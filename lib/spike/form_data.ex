@@ -94,9 +94,18 @@ defmodule Spike.FormData do
     current_structs = Map.get(struct, field)
     dirty_fields = struct.__dirty_fields__ ++ [field]
 
+    new_child =
+      case params do
+        %{ref: _ref} = fd when is_struct(fd) ->
+          params
+
+        _ ->
+          mod.new(params)
+      end
+
     %{
       struct
-      | field => current_structs ++ [mod.new(params)],
+      | field => current_structs ++ [new_child],
         :__dirty_fields__ => Enum.uniq(dirty_fields)
     }
   end
