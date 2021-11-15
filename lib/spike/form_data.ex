@@ -4,8 +4,10 @@ defmodule Spike.FormData do
   @callback changeset(struct :: term, params :: map) :: term
   @callback to_params(form :: term) :: map
   @callback to_json(form :: term) :: binary
+  @callback after_update(struct_before :: term, struct_after :: term, changed_fields :: list) ::
+              term
 
-  @optional_callbacks new: 1, new: 2, changeset: 2, to_params: 1, to_json: 1
+  @optional_callbacks new: 1, new: 2, changeset: 2, to_params: 1, to_json: 1, after_update: 3
 
   defmacro __using__(do: block) do
     quote location: :keep do
@@ -65,7 +67,11 @@ defmodule Spike.FormData do
         |> Spike.FormData.Serialization.to_json()
       end
 
-      defoverridable new: 1, new: 2, changeset: 2, to_params: 1, to_json: 1
+      def after_update(_struct_before, struct_after, _changed_fields) do
+        struct_after
+      end
+
+      defoverridable new: 1, new: 2, changeset: 2, to_params: 1, to_json: 1, after_update: 3
     end
   end
 
@@ -76,19 +82,41 @@ defmodule Spike.FormData do
     |> cast_embeds(embeds(struct))
   end
 
-  def update(struct, params) do
+  def update(%{ref: ref} = struct, ref, params) do
+    update(struct, params)
+  end
+
+  def update(struct, ref, params) do
+    update_embeds(struct, ref, params, embeds(struct))
+  end
+
+  defp update(struct, params) do
+    struct_before = struct
+
     changeset =
       struct
       |> Ecto.Changeset.cast(params, fields(struct) -- embeds(struct))
 
-    dirty_fields = struct.__dirty_fields__ ++ (changeset.changes |> Map.keys())
+    updated_fields = changeset.changes |> Map.keys()
+    dirty_fields = struct.__dirty_fields__ ++ updated_fields
 
-    changeset
-    |> Ecto.Changeset.put_change(:__dirty_fields__, Enum.uniq(dirty_fields))
-    |> Ecto.Changeset.apply_changes()
+    struct_after =
+      changeset
+      |> Ecto.Changeset.put_change(:__dirty_fields__, Enum.uniq(dirty_fields))
+      |> Ecto.Changeset.apply_changes()
+
+    struct.__struct__.after_update(struct_before, struct_after, updated_fields)
   end
 
-  def append(struct, field, params) do
+  def append(%{ref: ref} = struct, ref, field, params) do
+    append(struct, field, params)
+  end
+
+  def append(struct, ref, field, params) do
+    append_embeds(struct, ref, field, params, embeds(struct))
+  end
+
+  defp append(struct, field, params) do
     %{cardinality: :many, related: mod} = embed(struct, field)
 
     current_structs = Map.get(struct, field)
@@ -146,22 +174,6 @@ defmodule Spike.FormData do
     {struct, dirty_embeds} = delete_embeds(struct, ref, embeds(struct), [])
 
     %{struct | :__dirty_fields__ => (struct.__dirty_fields__ ++ dirty_embeds) |> Enum.uniq()}
-  end
-
-  def update(%{ref: ref} = struct, ref, params) do
-    update(struct, params)
-  end
-
-  def update(struct, ref, params) do
-    update_embeds(struct, ref, params, embeds(struct))
-  end
-
-  def append(%{ref: ref} = struct, ref, field, params) do
-    append(struct, field, params)
-  end
-
-  def append(struct, ref, field, params) do
-    append_embeds(struct, ref, field, params, embeds(struct))
   end
 
   defp fields(struct) when is_struct(struct) do
@@ -282,19 +294,22 @@ defmodule Spike.FormData do
       list when is_list(list) ->
         %{struct | embed => Enum.map(embed_field, &update(&1, ref, params))}
         |> update_embeds(ref, params, rest)
-        |> maybe_mark_embed_as_dirty(struct, embed)
+        |> maybe_mark_embed_as_dirty_and_run_callback(struct, embed)
 
       _ ->
         %{struct | embed => update(embed_field, ref, params)}
         |> update_embeds(ref, params, rest)
-        |> maybe_mark_embed_as_dirty(struct, embed)
+        |> maybe_mark_embed_as_dirty_and_run_callback(struct, embed)
     end
   end
 
-  defp maybe_mark_embed_as_dirty(updated_struct, struct, embed) do
+  defp maybe_mark_embed_as_dirty_and_run_callback(updated_struct, struct, embed) do
     if Map.get(updated_struct, embed) != Map.get(struct, embed) do
       dirty_fields = Enum.uniq(updated_struct.__dirty_fields__ ++ [embed])
-      %{updated_struct | __dirty_fields__: dirty_fields}
+
+      struct.__struct__.after_update(struct, %{updated_struct | __dirty_fields__: dirty_fields}, [
+        embed
+      ])
     else
       updated_struct
     end

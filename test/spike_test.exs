@@ -1,5 +1,6 @@
 defmodule SpikeTest do
   use ExUnit.Case
+  import ExUnit.CaptureIO
 
   describe "Spike.FormDataData.new/1" do
     test "initializes simple form form_data from params" do
@@ -198,6 +199,38 @@ defmodule SpikeTest do
 
       refute Spike.valid?(form)
       assert Spike.errors(form) == %{form.company.ref => %{name: [presence: "must be present"]}}
+    end
+
+    test "runs update callbacks on struct and all it's parents" do
+      form =
+        Test.ComplexFormDataWithCallbacks.new(%{
+          company: %{
+            name: "AmberBit",
+            country: "Poland"
+          },
+          partners: [
+            %{name: "Hubert"},
+            %{name: "Wojciech"}
+          ],
+          accepts_conditions: "true"
+        })
+
+      hubert_ref = hd(form.partners).ref
+
+      output =
+        capture_io(fn ->
+          Spike.update(form, hubert_ref, %{name: "Humberto"})
+        end)
+
+      assert output =~ "updated #{hubert_ref}, name changed from Hubert to Humberto"
+      assert output =~ "updated #{form.ref}, changed partners"
+
+      output =
+        capture_io(fn ->
+          Spike.update(form, form.company.ref, %{name: "AmberBitos"})
+        end)
+
+      assert output == ""
     end
   end
 
@@ -452,6 +485,6 @@ defmodule SpikeTest do
 
   test "allows overwriting callbacks" do
     form = Test.CustomizedForm.new(%{foo: :bar})
-    form.__struct__.to_params(form) == %{elo: :ziom}
+    assert form.__struct__.to_params(form) == %{elo: :ziom}
   end
 end
