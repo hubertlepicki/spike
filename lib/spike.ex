@@ -4,6 +4,7 @@ defmodule Spike do
   end
 
   defdelegate errors(struct), to: Spike.FormData
+  defdelegate human_readable_errors(struct), to: Spike.FormData
   defdelegate dirty_fields(struct), to: Spike.FormData
   defdelegate make_dirty(struct), to: Spike.FormData
   defdelegate make_pristine(struct), to: Spike.FormData

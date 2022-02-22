@@ -158,6 +158,21 @@ defmodule Spike.FormData do
     |> Enum.into(%{})
   end
 
+  def human_readable_errors(struct) do
+    struct
+    |> traverse_struct_paths([], &get_human_readable_errors/1)
+    |> List.flatten()
+    |> Enum.filter(& &1)
+    |> Enum.into(%{})
+    |> Enum.map(fn {path, errors} ->
+      Enum.map(errors, fn {k, msgs} ->
+        {Enum.join(path ++ ["#{k}"], "."), msgs}
+      end)
+    end)
+    |> List.flatten()
+    |> Enum.into(%{})
+  end
+
   def dirty_fields(struct) do
     struct
     |> traverse_structs(&get_dirty_fields/1)
@@ -257,6 +272,17 @@ defmodule Spike.FormData do
     end)
   end
 
+  defp get_human_readable_errors(struct) do
+    struct
+    |> Vex.errors()
+    |> Enum.reduce(%{}, fn {:error, field, _type, message}, acc ->
+      list = acc[field] || []
+
+      acc
+      |> Map.put("#{field}", list ++ [message])
+    end)
+  end
+
   defp get_dirty_fields(struct) do
     struct.__dirty_fields__
   end
@@ -279,6 +305,28 @@ defmodule Spike.FormData do
       (embeds(current_struct)
        |> Enum.map(fn embed ->
          traverse_structs(Map.get(current_struct, embed), callback)
+       end))
+  end
+
+  defp traverse_struct_paths(nil, _, _callback), do: []
+
+  defp traverse_struct_paths(list, path, callback) when is_list(list) do
+    list
+    |> Enum.with_index()
+    |> Enum.map(fn {val, index} -> traverse_struct_paths(val, path ++ ["#{index}"], callback) end)
+  end
+
+  defp traverse_struct_paths(current_struct, path, callback) do
+    collected = callback.(current_struct)
+
+    if Enum.count(collected) > 0 do
+      [{path, collected}]
+    else
+      []
+    end ++
+      (embeds(current_struct)
+       |> Enum.map(fn embed ->
+         traverse_struct_paths(Map.get(current_struct, embed), path ++ ["#{embed}"], callback)
        end))
   end
 

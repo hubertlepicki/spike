@@ -99,7 +99,7 @@ defmodule SpikeTest do
     end
   end
 
-  describe "Spike.valid?/1 && Spike.errors/1 && Spike.has_errors?/3 && Spike.has_errors?/4" do
+  describe "Spike.valid?/1 && Spike.errors/1 && Spike.has_errors?/3 && Spike.has_errors?/4 && Spike.human_readable_errors/1" do
     test "allows validations" do
       form =
         Test.SimpleFormData.new(%{
@@ -114,6 +114,11 @@ defmodule SpikeTest do
                  accepts_conditions: [acceptance: "must be accepted"],
                  first_name: [presence: "must be present"]
                }
+             }
+
+      assert Spike.human_readable_errors(form) == %{
+               "accepts_conditions" => ["must be accepted"],
+               "first_name" => ["must be present"]
              }
 
       assert Spike.has_errors?(form, form.ref, :first_name)
@@ -134,6 +139,11 @@ defmodule SpikeTest do
                }
              }
 
+      assert Spike.human_readable_errors(form) == %{
+               "company" => ["must be present"],
+               "accepts_conditions" => ["must be accepted"]
+             }
+
       form = Test.ComplexFormData.new(%{company: %{}})
 
       refute Spike.valid?(form)
@@ -141,6 +151,11 @@ defmodule SpikeTest do
       assert Spike.errors(form) == %{
                form.ref => %{accepts_conditions: [acceptance: "must be accepted"]},
                form.company.ref => %{name: [presence: "must be present"]}
+             }
+
+      assert Spike.human_readable_errors(form) == %{
+               "accepts_conditions" => ["must be accepted"],
+               "company.name" => ["must be present"]
              }
 
       assert Spike.errors(form)[form.ref] == %{
