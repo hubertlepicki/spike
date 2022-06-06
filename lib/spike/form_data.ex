@@ -203,8 +203,18 @@ defmodule Spike.FormData do
 
   defp cast_embeds(changeset, [h | t]) do
     changeset
-    |> Ecto.Changeset.cast_embed(h)
+    |> Ecto.Changeset.cast_embed(h, with: &cast_embed_with_fun/2)
     |> cast_embeds(t)
+  end
+
+  defp cast_embed_with_fun(_struct, %{__struct__: _} = new_struct) do
+    new_struct
+    |> Ecto.Changeset.cast(%{}, [])
+  end
+
+  defp cast_embed_with_fun(struct, map) do
+    struct
+    |> struct.__struct__.changeset(map)
   end
 
   defp make_embeds_dirty(struct, []), do: struct

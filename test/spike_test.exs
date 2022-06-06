@@ -216,6 +216,29 @@ defmodule SpikeTest do
       assert form.ref == form_ref
     end
 
+    test "updates the embeds and preinitialized form data" do
+      form =
+        Test.ComplexFormData.new(%{
+          company: %{
+            name: "AmberBit",
+            country: "Poland"
+          },
+          partners: [],
+          accepts_conditions: "true"
+        })
+
+      form_ref = form.ref
+
+      form =
+        form
+        |> Spike.update(form_ref, %{partners: [Test.ComplexFormData.PartnerFormData.new(%{name: "Hubert"}, %{foo: :bar})]})
+
+      assert (form.partners |> hd()).name == "Hubert"
+      assert (form.partners |> hd()).meta.foo == :bar
+      assert form.ref == form_ref
+    end
+
+
     test "updates the form_datas and changes validation" do
       form =
         Test.ComplexFormData.new(%{
