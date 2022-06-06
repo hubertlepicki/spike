@@ -194,6 +194,28 @@ defmodule SpikeTest do
       assert hubert_ref == hd(form.partners).ref
     end
 
+    test "updates the embeds and casts data" do
+      form =
+        Test.ComplexFormData.new(%{
+          company: %{
+            name: "AmberBit",
+            country: "Poland"
+          },
+          partners: [],
+          accepts_conditions: "true"
+        })
+
+      form_ref = form.ref
+
+      form =
+        form
+        |> Spike.update(form_ref, %{partners: [%{name: "Hubert"}, %{name: "Wojciech"}]})
+
+      assert (form.partners |> hd()).name == "Hubert"
+      assert (form.partners |> Enum.reverse() |> hd()).name == "Wojciech"
+      assert form.ref == form_ref
+    end
+
     test "updates the form_datas and changes validation" do
       form =
         Test.ComplexFormData.new(%{

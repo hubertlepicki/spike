@@ -77,6 +77,7 @@ defmodule Spike.FormData do
     changeset =
       struct
       |> Ecto.Changeset.cast(params, fields(struct) -- embeds(struct))
+      |> cast_embeds(embeds(struct))
 
     updated_fields = changeset.changes |> Map.keys()
     dirty_fields = struct.__dirty_fields__ ++ updated_fields
