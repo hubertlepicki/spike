@@ -13,28 +13,9 @@ defmodule Spike.FormData do
     quote location: :keep do
       @behaviour Spike.FormData
 
-      require Ecto.Schema
-
-      # the below are done to avoid using Ecto.Schema.__using__
+      use Ecto.Schema
       @primary_key {:ref, :binary_id, autogenerate: false}
       @foreign_key_type :binary_id
-      @timestamps_opts []
-      @schema_prefix nil
-      @schema_context nil
-      @field_source_mapper fn x -> x end
-
-      Module.register_attribute(__MODULE__, :ecto_primary_keys, accumulate: true)
-      Module.register_attribute(__MODULE__, :ecto_fields, accumulate: true)
-      Module.register_attribute(__MODULE__, :ecto_query_fields, accumulate: true)
-      Module.register_attribute(__MODULE__, :ecto_field_sources, accumulate: true)
-      Module.register_attribute(__MODULE__, :ecto_assocs, accumulate: true)
-      Module.register_attribute(__MODULE__, :ecto_embeds, accumulate: true)
-      Module.register_attribute(__MODULE__, :ecto_raw, accumulate: true)
-      Module.register_attribute(__MODULE__, :ecto_autogenerate, accumulate: true)
-      Module.register_attribute(__MODULE__, :ecto_autoupdate, accumulate: true)
-      Module.register_attribute(__MODULE__, :ecto_redact_fields, accumulate: true)
-      Module.put_attribute(__MODULE__, :ecto_derive_inspect_for_redacted_fields, true)
-      Module.put_attribute(__MODULE__, :ecto_autogenerate_id, nil)
 
       require Spike.FormData
       use Vex.Struct
