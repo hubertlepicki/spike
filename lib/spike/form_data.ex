@@ -1,13 +1,12 @@
 defmodule Spike.FormData do
   @callback new(params :: map) :: map
   @callback new(params :: map, meta :: map) :: map
-  @callback changeset(struct :: term, params :: map) :: term
   @callback to_params(form :: term) :: map
   @callback to_json(form :: term) :: binary
   @callback after_update(struct_before :: term, struct_after :: term, changed_fields :: list) ::
               term
 
-  @optional_callbacks new: 1, new: 2, changeset: 2, to_params: 1, to_json: 1, after_update: 3
+  @optional_callbacks new: 1, new: 2, to_params: 1, to_json: 1, after_update: 3
 
   defmacro __using__(do: block) do
     quote location: :keep do
@@ -28,14 +27,10 @@ defmodule Spike.FormData do
 
       def new(params, meta \\ %{}) do
         %__MODULE__{}
-        |> changeset(params)
+        |> Spike.FormData.changeset(params)
         |> Ecto.Changeset.apply_changes()
         |> Map.put(:ref, Ecto.UUID.generate())
         |> Map.put(:meta, meta)
-      end
-
-      def changeset(struct, params) do
-        Spike.FormData.changeset(struct, params)
       end
 
       def to_params(form) do
@@ -52,7 +47,7 @@ defmodule Spike.FormData do
         struct_after
       end
 
-      defoverridable new: 1, new: 2, changeset: 2, to_params: 1, to_json: 1, after_update: 3
+      defoverridable new: 1, new: 2, to_params: 1, to_json: 1, after_update: 3
     end
   end
 
@@ -214,7 +209,7 @@ defmodule Spike.FormData do
 
   defp cast_embed_with_fun(struct, map) do
     struct
-    |> struct.__struct__.changeset(map)
+    |> Spike.FormData.changeset(map)
   end
 
   defp make_embeds_dirty(struct, []), do: struct

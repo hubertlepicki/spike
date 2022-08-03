@@ -231,13 +231,14 @@ defmodule SpikeTest do
 
       form =
         form
-        |> Spike.update(form_ref, %{partners: [Test.ComplexFormData.PartnerFormData.new(%{name: "Hubert"}, %{foo: :bar})]})
+        |> Spike.update(form_ref, %{
+          partners: [Test.ComplexFormData.PartnerFormData.new(%{name: "Hubert"}, %{foo: :bar})]
+        })
 
       assert (form.partners |> hd()).name == "Hubert"
       assert (form.partners |> hd()).meta.foo == :bar
       assert form.ref == form_ref
     end
-
 
     test "updates the form_datas and changes validation" do
       form =
