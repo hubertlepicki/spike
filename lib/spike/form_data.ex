@@ -74,7 +74,7 @@ defmodule Spike.FormData do
     casted_params =
       params
       |> Tarams.cast!(tarams_schema_definition(struct.__struct__, Map.keys(params)))
-      |> Mappable.to_map(keys: :atoms)
+      |> Mappable.to_map(keys: :atoms, shallow: true)
 
     struct
     |> ensure_has_ref()

@@ -97,6 +97,23 @@ defmodule SpikeTest do
 
       assert form.partners == []
     end
+
+    test "casts types properly" do
+      form =
+        Test.TypeTestForm.new(%{
+          name: "Hubert",
+          # yeah right
+          age: "30",
+          accepts_conditions: "1",
+          dob: "1992-01-01",
+          inserted_at: "1992-01-01 00:00:00"
+        })
+
+      assert form.name == "Hubert"
+      assert form.age == 30
+      assert form.accepts_conditions == true
+      assert form.dob == ~D[1992-01-01]
+    end
   end
 
   describe "Spike.valid?/1 && Spike.errors/1 && Spike.has_errors?/3 && Spike.has_errors?/4 && Spike.human_readable_errors/1" do
