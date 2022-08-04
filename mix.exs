@@ -27,11 +27,11 @@ defmodule Spike.MixProject do
   defp deps do
     [
       {:vex, "~> 0.9"},
-      {:surface, "~> 0.5"},
       {:tarams, "~> 1.6"},
       {:mappable, "~> 0.2"},
       {:map_diff, "~> 1.3"},
-      {:uuid, "~> 1.1"}
+      {:uuid, "~> 1.1"},
+      {:jason, "~> 1.3"}
     ]
   end
 end
