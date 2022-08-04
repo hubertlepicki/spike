@@ -227,16 +227,18 @@ defmodule SpikeTest do
           accepts_conditions: "true"
         })
 
+      preinitialized = Test.ComplexFormData.PartnerFormData.new(%{name: "Hubert"}, %{foo: :bar})
+
       form_ref = form.ref
 
       form =
         form
         |> Spike.update(form_ref, %{
-          partners: [Test.ComplexFormData.PartnerFormData.new(%{name: "Hubert"}, %{foo: :bar})]
+          partners: [preinitialized]
         })
 
       assert (form.partners |> hd()).name == "Hubert"
-      assert (form.partners |> hd()).meta.foo == :bar
+      assert form.partners |> hd() == preinitialized
       assert form.ref == form_ref
     end
 
@@ -433,14 +435,14 @@ defmodule SpikeTest do
         |> Spike.delete(form.company.ref)
 
       assert Spike.dirty_fields(form) == %{
-               form.ref => [:accepts_conditions, :partners, :company],
+               form.ref => [:accepts_conditions, :company, :partners],
                hubert_ref => [:name]
              }
 
       form = initial.form |> Spike.make_dirty()
 
       assert Spike.dirty_fields(form) == %{
-               form.company.ref => [:name, :country],
+               form.company.ref => [:country, :name],
                form.ref => [:accepts_conditions, :company, :partners],
                hd(form.partners).ref => [:name],
                hd(form.partners |> Enum.reverse()).ref => [:name]
@@ -460,7 +462,7 @@ defmodule SpikeTest do
         |> Spike.update(company_ref, %{name: "AmberBito"})
 
       assert Spike.dirty_fields(form) == %{
-               form.ref => [:partners, :company],
+               form.ref => [:company, :partners],
                hubert_ref => [:name],
                company_ref => [:name]
              }

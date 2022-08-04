@@ -12,24 +12,39 @@ defmodule Spike.FormData do
     quote location: :keep do
       @behaviour Spike.FormData
 
-      use Ecto.Schema
-      @primary_key {:ref, :binary_id, autogenerate: false}
-      @foreign_key_type :binary_id
-
       require Spike.FormData
       use Vex.Struct
 
-      Ecto.Schema.embedded_schema do
-        unquote(block)
-        field(:__dirty_fields__, {:array, :string}, default: [])
-        field(:meta, :map, default: %{})
+      import Spike.FormData.Schema
+
+      Module.register_attribute(__MODULE__, :struct_fields, accumulate: true)
+      Module.register_attribute(__MODULE__, :schema_fields, accumulate: true)
+      Module.register_attribute(__MODULE__, :schema_embeds, accumulate: true)
+
+      unquote(block)
+
+      field(:__dirty_fields__, {:array, :string}, default: [], private: true)
+      field(:meta, :map, default: %{}, private: true)
+      field(:ref, :string, private: true)
+
+      defstruct @struct_fields
+
+      def __struct_fields__() do
+        @struct_fields
+      end
+
+      def __schema_fields__() do
+        @schema_fields
+      end
+
+      def __schema_embeds__() do
+        @schema_embeds
       end
 
       def new(params, meta \\ %{}) do
         %__MODULE__{}
-        |> Spike.FormData.changeset(params)
-        |> Ecto.Changeset.apply_changes()
-        |> Map.put(:ref, Ecto.UUID.generate())
+        |> Spike.FormData.cast(params)
+        |> Map.put(:ref, Spike.UUID.generate())
         |> Map.put(:meta, meta)
       end
 
@@ -51,11 +66,29 @@ defmodule Spike.FormData do
     end
   end
 
-  def changeset(struct, params) do
+  def cast(struct, params) do
+    params =
+      (params || %{})
+      |> Mappable.to_map(keys: :strings, shallow: true)
+
+    casted_params =
+      params
+      |> Tarams.cast!(tarams_schema_definition(struct.__struct__, Map.keys(params)))
+      |> Mappable.to_map(keys: :atoms)
+
     struct
     |> ensure_has_ref()
-    |> Ecto.Changeset.cast(params, fields(struct) -- embeds(struct))
-    |> cast_embeds(embeds(struct))
+    |> Map.merge(casted_params)
+    |> cast_embeds(embeds(struct), params)
+  end
+
+  defp tarams_schema_definition(mod, param_keys) do
+    mod.__schema_fields__()
+    |> Enum.filter(&(&1.private == false && "#{&1.name}" in param_keys))
+    |> Enum.map(fn definition ->
+      {definition.name, [type: definition.type, default: definition.default]}
+    end)
+    |> Enum.into(%{})
   end
 
   def update(%{ref: ref} = struct, ref, params) do
@@ -69,20 +102,29 @@ defmodule Spike.FormData do
   defp update(struct, params) do
     struct_before = struct
 
-    changeset =
-      struct
-      |> Ecto.Changeset.cast(params, fields(struct) -- embeds(struct))
-      |> cast_embeds(embeds(struct))
-
-    updated_fields = changeset.changes |> Map.keys()
-    dirty_fields = struct.__dirty_fields__ ++ updated_fields
-
     struct_after =
-      changeset
-      |> Ecto.Changeset.put_change(:__dirty_fields__, Enum.uniq(dirty_fields))
-      |> Ecto.Changeset.apply_changes()
+      struct
+      |> cast(params)
 
-    struct.__struct__.after_update(struct_before, struct_after, updated_fields)
+    updated_fields = updated_fields(struct_before, struct_after)
+    dirty_fields = (struct.__dirty_fields__ ++ updated_fields) |> Enum.uniq() |> Enum.sort()
+
+    struct.__struct__.after_update(
+      struct_before,
+      %{struct_after | __dirty_fields__: dirty_fields},
+      updated_fields
+    )
+  end
+
+  defp updated_fields(struct_before, struct_after) do
+    struct_before
+    |> MapDiff.diff(struct_after)
+    |> Map.get(:value)
+    |> Enum.filter(fn {_k, %{changed: changed}} ->
+      changed != :equal
+    end)
+    |> Enum.into(%{})
+    |> Map.keys()
   end
 
   def append(%{ref: ref} = struct, ref, field, params) do
@@ -94,10 +136,10 @@ defmodule Spike.FormData do
   end
 
   defp append(struct, field, params) do
-    %{cardinality: :many, related: mod} = embed(struct, field)
+    %{many: true, type: mod} = embed(struct, field)
 
     current_structs = Map.get(struct, field)
-    dirty_fields = struct.__dirty_fields__ ++ [field]
+    dirty_fields = (struct.__dirty_fields__ ++ [field]) |> Enum.uniq() |> Enum.sort()
 
     new_child =
       case params do
@@ -111,12 +153,12 @@ defmodule Spike.FormData do
     %{
       struct
       | field => current_structs ++ [new_child],
-        :__dirty_fields__ => Enum.uniq(dirty_fields)
+        :__dirty_fields__ => dirty_fields
     }
   end
 
   def make_dirty(struct) do
-    dirty_fields = (fields(struct) ++ embeds(struct)) |> Enum.uniq()
+    dirty_fields = (fields(struct) ++ embeds(struct)) |> Enum.uniq() |> Enum.sort()
 
     %{struct | :__dirty_fields__ => dirty_fields}
     |> make_embeds_dirty(embeds(struct))
@@ -165,7 +207,11 @@ defmodule Spike.FormData do
   def delete(struct, ref) do
     {struct, dirty_embeds} = delete_embeds(struct, ref, embeds(struct), [])
 
-    %{struct | :__dirty_fields__ => (struct.__dirty_fields__ ++ dirty_embeds) |> Enum.uniq()}
+    %{
+      struct
+      | :__dirty_fields__ =>
+          (struct.__dirty_fields__ ++ dirty_embeds) |> Enum.uniq() |> Enum.sort()
+    }
   end
 
   defp fields(struct) when is_struct(struct) do
@@ -173,7 +219,9 @@ defmodule Spike.FormData do
   end
 
   defp fields(mod) when is_atom(mod) do
-    mod.__schema__(:fields) -- [:__dirty_fields__, :ref, :meta]
+    mod.__schema_fields__()
+    |> Enum.filter(&(&1[:private] == false))
+    |> Enum.map(& &1[:name])
   end
 
   defp embeds(struct) when is_struct(struct) do
@@ -181,35 +229,55 @@ defmodule Spike.FormData do
   end
 
   defp embeds(mod) when is_atom(mod) do
-    mod.__schema__(:embeds)
+    mod.__schema_embeds__()
+    |> Enum.map(& &1[:name])
   end
 
   defp embed(struct, name) when is_struct(struct) do
-    struct.__struct__.__schema__(:embed, name)
+    struct.__struct__.__schema_embeds__()
+    |> Enum.find(&(&1.name == name))
   end
 
   defp ensure_has_ref(%{ref: nil} = struct) do
-    %{struct | ref: Ecto.UUID.generate()}
+    %{struct | ref: Spike.UUID.generate()}
   end
 
   defp ensure_has_ref(struct), do: struct
 
-  defp cast_embeds(changeset, []), do: changeset
+  defp cast_embeds(form_data, [], _params), do: form_data
 
-  defp cast_embeds(changeset, [h | t]) do
-    changeset
-    |> Ecto.Changeset.cast_embed(h, with: &cast_embed_with_fun/2)
-    |> cast_embeds(t)
+  defp cast_embeds(form_data, [h | t], params) do
+    if Map.keys(params) |> Enum.member?("#{h}") do
+      form_data
+      |> cast_embed(embed(form_data, h), params["#{h}"])
+    else
+      form_data
+    end
+    |> cast_embeds(t, params)
   end
 
-  defp cast_embed_with_fun(_struct, %{__struct__: _} = new_struct) do
-    new_struct
-    |> Ecto.Changeset.cast(%{}, [])
+  defp cast_embed(form_data, %{one: true} = embed, %{__struct__: _} = new_struct) do
+    form_data
+    |> Map.put(embed.name, new_struct)
   end
 
-  defp cast_embed_with_fun(struct, map) do
-    struct
-    |> Spike.FormData.changeset(map)
+  defp cast_embed(form_data, %{one: true} = embed, map) do
+    form_data
+    |> Map.put(embed.name, embed.type.new(map))
+  end
+
+  defp cast_embed(form_data, %{many: true} = _embed, nil), do: form_data
+  defp cast_embed(form_data, %{many: true} = embed, []), do: form_data |> Map.put(embed.name, [])
+
+  defp cast_embed(form_data, %{many: true} = embed, list) do
+    form_data
+    |> Map.put(
+      embed.name,
+      Enum.map(list, fn
+        %{__struct__: _} = new_struct -> new_struct
+        map -> embed.type.new(map)
+      end)
+    )
   end
 
   defp make_embeds_dirty(struct, []), do: struct
@@ -340,7 +408,7 @@ defmodule Spike.FormData do
 
   defp maybe_mark_embed_as_dirty_and_run_callback(updated_struct, struct, embed) do
     if Map.get(updated_struct, embed) != Map.get(struct, embed) do
-      dirty_fields = Enum.uniq(updated_struct.__dirty_fields__ ++ [embed])
+      dirty_fields = (updated_struct.__dirty_fields__ ++ [embed]) |> Enum.uniq() |> Enum.sort()
 
       struct.__struct__.after_update(struct, %{updated_struct | __dirty_fields__: dirty_fields}, [
         embed

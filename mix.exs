@@ -18,7 +18,7 @@ defmodule Spike.MixProject do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      extra_applications: [:logger],
+      extra_applications: [:logger, :crypto],
       mod: {Spike.Application, []}
     ]
   end
@@ -26,9 +26,12 @@ defmodule Spike.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:ecto, "~> 3.7"},
       {:vex, "~> 0.9"},
-      {:surface, "~> 0.5"}
+      {:surface, "~> 0.5"},
+      {:tarams, "~> 1.6"},
+      {:mappable, "~> 0.2"},
+      {:map_diff, "~> 1.3"},
+      {:uuid, "~> 1.1"}
     ]
   end
 end
