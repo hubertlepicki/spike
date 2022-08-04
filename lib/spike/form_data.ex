@@ -1,6 +1,6 @@
 defmodule Spike.FormData do
   @callback new(params :: map) :: map
-  @callback new(params :: map, meta :: map) :: map
+  @callback new(params :: map, options :: keyword) :: map
   @callback to_params(form :: term) :: map
   @callback to_json(form :: term) :: binary
   @callback after_update(struct_before :: term, struct_after :: term, changed_fields :: list) ::
@@ -24,7 +24,6 @@ defmodule Spike.FormData do
       unquote(block)
 
       field(:__dirty_fields__, {:array, :string}, default: [], private: true)
-      field(:meta, :map, default: %{}, private: true)
       field(:ref, :string, private: true)
 
       defstruct @struct_fields
@@ -41,11 +40,10 @@ defmodule Spike.FormData do
         @schema_embeds
       end
 
-      def new(params, meta \\ %{}) do
+      def new(params, options \\ []) do
         %__MODULE__{}
-        |> Spike.FormData.cast(params)
-        |> Map.put(:ref, Spike.UUID.generate())
-        |> Map.put(:meta, meta)
+        |> Spike.FormData.cast(params, cast_private: Keyword.get(options, :cast_private, false))
+        |> Map.put_new(:ref, Spike.UUID.generate())
       end
 
       def to_params(form) do
@@ -66,25 +64,32 @@ defmodule Spike.FormData do
     end
   end
 
-  def cast(struct, params) do
+  def cast(struct, params, options \\ []) do
     params =
       (params || %{})
       |> Mappable.to_map(keys: :strings, shallow: true)
 
     casted_params =
       params
-      |> Tarams.cast!(tarams_schema_definition(struct.__struct__, Map.keys(params)))
+      |> Tarams.cast!(
+        tarams_schema_definition(
+          struct.__struct__,
+          Map.keys(params),
+          Keyword.get(options, :cast_private, false)
+        )
+      )
       |> Mappable.to_map(keys: :atoms, shallow: true)
 
     struct
     |> ensure_has_ref()
     |> Map.merge(casted_params)
-    |> cast_embeds(embeds(struct), params)
+    |> cast_embeds(embeds(struct), params, options)
   end
 
-  defp tarams_schema_definition(mod, param_keys) do
+  defp tarams_schema_definition(mod, param_keys, cast_private) do
     mod.__schema_fields__()
-    |> Enum.filter(&(&1.private == false && "#{&1.name}" in param_keys))
+    |> Enum.filter(&(&1.private == false || cast_private))
+    |> Enum.filter(&("#{&1.name}" in param_keys))
     |> Enum.map(fn definition ->
       {definition.name, [type: definition.type, default: definition.default]}
     end)
@@ -251,38 +256,40 @@ defmodule Spike.FormData do
 
   defp ensure_has_ref(struct), do: struct
 
-  defp cast_embeds(form_data, [], _params), do: form_data
+  defp cast_embeds(form_data, [], _params, _options), do: form_data
 
-  defp cast_embeds(form_data, [h | t], params) do
+  defp cast_embeds(form_data, [h | t], params, options) do
     if Map.keys(params) |> Enum.member?("#{h}") do
       form_data
-      |> cast_embed(embed(form_data, h), params["#{h}"])
+      |> cast_embed(embed(form_data, h), params["#{h}"], options)
     else
       form_data
     end
-    |> cast_embeds(t, params)
+    |> cast_embeds(t, params, options)
   end
 
-  defp cast_embed(form_data, %{one: true} = embed, %{__struct__: _} = new_struct) do
+  defp cast_embed(form_data, %{one: true} = embed, %{__struct__: _} = new_struct, _options) do
     form_data
     |> Map.put(embed.name, new_struct)
   end
 
-  defp cast_embed(form_data, %{one: true} = embed, map) do
+  defp cast_embed(form_data, %{one: true} = embed, map, options) do
     form_data
-    |> Map.put(embed.name, embed.type.new(map))
+    |> Map.put(embed.name, embed.type.new(map, options))
   end
 
-  defp cast_embed(form_data, %{many: true} = _embed, nil), do: form_data
-  defp cast_embed(form_data, %{many: true} = embed, []), do: form_data |> Map.put(embed.name, [])
+  defp cast_embed(form_data, %{many: true} = _embed, nil, _options), do: form_data
 
-  defp cast_embed(form_data, %{many: true} = embed, list) do
+  defp cast_embed(form_data, %{many: true} = embed, [], _options),
+    do: form_data |> Map.put(embed.name, [])
+
+  defp cast_embed(form_data, %{many: true} = embed, list, options) do
     form_data
     |> Map.put(
       embed.name,
       Enum.map(list, fn
         %{__struct__: _} = new_struct -> new_struct
-        map -> embed.type.new(map)
+        map -> embed.type.new(map, options)
       end)
     )
   end
@@ -463,30 +470,30 @@ defmodule Spike.FormData do
     end
   end
 
-  def set_meta(%{ref: ref} = form, ref, value) do
-    %{form | meta: value}
+  def set_private(%{ref: ref} = form, ref, key, value) do
+    %{form | key => value}
   end
 
-  def set_meta(form, ref, value) do
-    set_embeds_meta(form, ref, value, embeds(form))
+  def set_private(form, ref, key, value) do
+    set_embeds_private(form, ref, key, value, embeds(form))
   end
 
-  defp set_embeds_meta(struct, _ref, _params, []), do: struct
+  defp set_embeds_private(struct, _ref, _key, _value, []), do: struct
 
-  defp set_embeds_meta(struct, ref, value, [embed | rest]) do
+  defp set_embeds_private(struct, ref, key, value, [embed | rest]) do
     embed_field = Map.get(struct, embed)
 
     case embed_field do
       nil ->
-        set_embeds_meta(struct, ref, value, rest)
+        set_embeds_private(struct, ref, key, value, rest)
 
       list when is_list(list) ->
-        %{struct | embed => Enum.map(embed_field, &set_meta(&1, ref, value))}
-        |> set_embeds_meta(ref, value, rest)
+        %{struct | embed => Enum.map(embed_field, &set_private(&1, ref, key, value))}
+        |> set_embeds_private(ref, key, value, rest)
 
       _ ->
-        %{struct | embed => set_meta(embed_field, ref, value)}
-        |> set_embeds_meta(ref, value, rest)
+        %{struct | embed => set_private(embed_field, ref, key, value)}
+        |> set_embeds_private(ref, key, value, rest)
     end
   end
 end

@@ -33,35 +33,6 @@ defmodule SpikeTest do
       assert form.ref != nil
     end
 
-    test "autogenerates meta field" do
-      form =
-        Test.SimpleFormData.new(%{
-          first_name: "Spike",
-          last_name: "Spiegel",
-          age: "36",
-          email: "spike@example.com",
-          accepts_conditions: "true"
-        })
-
-      assert form.meta == %{}
-    end
-
-    test "initializes meta field if given" do
-      form =
-        Test.SimpleFormData.new(
-          %{
-            first_name: "Spike",
-            last_name: "Spiegel",
-            age: "36",
-            email: "spike@example.com",
-            accepts_conditions: "true"
-          },
-          %{foo: :bar}
-        )
-
-      assert form.meta == %{foo: :bar}
-    end
-
     test "initializes nested form_data" do
       form =
         Test.ComplexFormData.new(%{
@@ -113,6 +84,75 @@ defmodule SpikeTest do
       assert form.age == 30
       assert form.accepts_conditions == true
       assert form.dob == ~D[1992-01-01]
+    end
+  end
+
+  describe "private fields" do
+    test "should be able to set private fields on new/2 if cast_private: true" do
+      ref = Spike.UUID.generate()
+
+      form =
+        Test.PrivateForm.new(
+          %{
+            ref: ref,
+            public_field: "hello",
+            private_field: "world",
+            subform: %{public_field: "hola", private_field: "el mundo"}
+          },
+          cast_private: true
+        )
+
+      assert form.public_field == "hello"
+      assert form.private_field == "world"
+      assert form.ref == ref
+      assert form.subform.public_field == "hola"
+      assert form.subform.private_field == "el mundo"
+    end
+
+    test "should not be able to set private fields on new/2 if cast_private: false" do
+      ref = Spike.UUID.generate()
+
+      form =
+        Test.PrivateForm.new(%{
+          ref: ref,
+          public_field: "hello",
+          private_field: "world",
+          subform: %{public_field: "hola", private_field: "el mundo"}
+        })
+
+      assert form.public_field == "hello"
+      assert form.private_field == nil
+      assert form.ref != ref
+      assert form.subform.public_field == "hola"
+      assert form.subform.private_field == nil
+    end
+
+    test "should not be able to update private fields, unless set_private is called" do
+      form =
+        Test.PrivateForm.new(%{
+          public_field: "hello",
+          subform: %{public_field: "hola"}
+        })
+
+      form =
+        Spike.update(form, form.ref, %{public_field: "upd1", private_field: "upd2", ref: "upd3"})
+
+      form =
+        Spike.update(form, form.subform.ref, %{public_field: "Hola", private_field: "el mundo"})
+
+      assert form.public_field == "upd1"
+      assert form.private_field == nil
+      assert form.subform.public_field == "Hola"
+      assert form.subform.private_field == nil
+
+      form = Spike.set_private(form, form.ref, :private_field, "upd2")
+      form = Spike.set_private(form, form.ref, :ref, "elo")
+
+      form = Spike.set_private(form, form.subform.ref, :private_field, "el mundo")
+
+      assert form.private_field == "upd2"
+      assert form.ref == "elo"
+      assert form.subform.private_field == "el mundo"
     end
   end
 
@@ -244,7 +284,7 @@ defmodule SpikeTest do
           accepts_conditions: "true"
         })
 
-      preinitialized = Test.ComplexFormData.PartnerFormData.new(%{name: "Hubert"}, %{foo: :bar})
+      preinitialized = Test.ComplexFormData.PartnerFormData.new(%{name: "Hubert"})
 
       form_ref = form.ref
 
@@ -413,7 +453,7 @@ defmodule SpikeTest do
         |> Spike.append(
           form.ref,
           :partners,
-          Test.ComplexFormData.PartnerFormData.new(%{name: "Hubert"}, %{foo: :bar})
+          Test.ComplexFormData.PartnerFormData.new(%{name: "Hubert"})
         )
         |> Spike.append(
           form.ref,
@@ -422,10 +462,7 @@ defmodule SpikeTest do
         )
 
       assert hd(form.partners).name == "Hubert"
-      assert hd(form.partners).meta == %{foo: :bar}
-
       assert hd(form.partners |> Enum.reverse()).name == "Wojciech"
-      assert hd(form.partners |> Enum.reverse()).meta == %{}
     end
   end
 
@@ -549,45 +586,6 @@ defmodule SpikeTest do
     test "should convert given form data to JSON", %{form: form} do
       assert form.__struct__.to_json(form) ==
                "{\"accepts_conditions\":true,\"company\":{\"country\":\"Poland\",\"name\":\"AmberBit\"},\"partners\":[{\"name\":\"Hubert\"},{\"name\":\"Wojciech\"}]}"
-    end
-  end
-
-  describe ".set_meta/3" do
-    test "sets new meta value" do
-      form =
-        Test.SimpleFormData.new(%{
-          first_name: "Spike",
-          last_name: "Spiegel",
-          age: "36",
-          email: "spike@example.com",
-          accepts_conditions: "true"
-        })
-
-      form = Spike.set_meta(form, form.ref, %{foo: :bar})
-
-      assert form.meta.foo == :bar
-      assert Spike.dirty_fields(form) == %{}
-    end
-
-    test "sets new meta value on embeds" do
-      form =
-        Test.ComplexFormData.new(%{
-          company: %{
-            name: "AmberBit",
-            country: "Poland"
-          },
-          partners: [
-            %{name: "Hubert"},
-            %{name: "Wojciech"}
-          ],
-          accepts_conditions: "true"
-        })
-
-      hubert_ref = hd(form.partners).ref
-
-      form = Spike.set_meta(form, hubert_ref, %{foo: :bar})
-
-      assert hd(form.partners).meta.foo == :bar
     end
   end
 

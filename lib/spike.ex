@@ -11,7 +11,7 @@ defmodule Spike do
   defdelegate update(struct, ref, params), to: Spike.FormData
   defdelegate append(struct, ref, field, params), to: Spike.FormData
   defdelegate delete(struct, ref), to: Spike.FormData
-  defdelegate set_meta(struct, ref, value), to: Spike.FormData
+  defdelegate set_private(struct, ref, key, value), to: Spike.FormData
   defdelegate has_errors?(struct, ref, key), to: Spike.ErrorHelpers
   defdelegate has_errors?(struct, ref, key, message), to: Spike.ErrorHelpers
 end
