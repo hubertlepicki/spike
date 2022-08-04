@@ -119,12 +119,19 @@ defmodule Spike.FormData do
   defp updated_fields(struct_before, struct_after) do
     struct_before
     |> MapDiff.diff(struct_after)
-    |> Map.get(:value)
-    |> Enum.filter(fn {_k, %{changed: changed}} ->
-      changed != :equal
-    end)
-    |> Enum.into(%{})
-    |> Map.keys()
+    |> case do
+      %{changed: :equal} ->
+        []
+
+      diff ->
+        diff
+        |> Map.get(:value)
+        |> Enum.filter(fn {_k, %{changed: changed}} ->
+          changed != :equal
+        end)
+        |> Enum.into(%{})
+        |> Map.keys()
+    end
   end
 
   def append(%{ref: ref} = struct, ref, field, params) do

@@ -295,6 +295,34 @@ defmodule SpikeTest do
 
       assert output == ""
     end
+
+    test "doesn't update the form or embeds if nothing changed" do
+      form =
+        Test.ComplexFormData.new(%{
+          company: %{
+            name: "AmberBit",
+            country: "Poland"
+          },
+          partners: [
+            %{name: "Hubert"},
+            %{name: "Wojciech"}
+          ],
+          accepts_conditions: "true"
+        })
+
+      hubert_ref = hd(form.partners).ref
+      form_ref = form.ref
+
+      form =
+        form
+        |> Spike.update(hubert_ref, %{name: "Hubert"})
+        |> Spike.update(form_ref, %{accepts_conditions: "true"})
+
+      assert form.accepts_conditions == true
+      assert (form.partners |> hd()).name == "Hubert"
+      assert form.ref == form_ref
+      assert hubert_ref == hd(form.partners).ref
+    end
   end
 
   describe "Spike.delete/2" do
