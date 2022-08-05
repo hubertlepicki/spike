@@ -8,7 +8,15 @@ defmodule Spike.MixProject do
       elixir: "~> 1.11",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      elixirc_paths: elixirc_paths(Mix.env())
+      elixirc_paths: elixirc_paths(Mix.env()),
+      source_url: "https://github.com/hubertlepicki/spike",
+      homepage_url: "https://github.com/hubertlepicki/spike",
+      docs: [
+        main: "readme",
+        logo: "assets/spike-logo.png",
+        extras: ["README.md"]
+
+      ]
     ]
   end
 
@@ -31,7 +39,8 @@ defmodule Spike.MixProject do
       {:mappable, "~> 0.2"},
       {:map_diff, "~> 1.3"},
       {:uuid, "~> 1.1"},
-      {:jason, "~> 1.3"}
+      {:jason, "~> 1.3"},
+      {:ex_doc, "~> 0.27", only: :dev, runtime: false},
     ]
   end
 end
