@@ -15,7 +15,6 @@ defmodule Spike.MixProject do
         main: "readme",
         logo: "assets/spike-logo.png",
         extras: ["README.md"]
-
       ]
     ]
   end
@@ -39,8 +38,7 @@ defmodule Spike.MixProject do
       {:mappable, "~> 0.2"},
       {:map_diff, "~> 1.3"},
       {:uuid, "~> 1.1"},
-      {:jason, "~> 1.3"},
-      {:ex_doc, "~> 0.27", only: :dev, runtime: false},
+      {:ex_doc, "~> 0.27", only: :dev, runtime: false}
     ]
   end
 end

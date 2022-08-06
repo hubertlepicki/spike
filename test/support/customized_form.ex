@@ -7,9 +7,4 @@ defmodule Test.CustomizedForm do
   def new(_params, meta) do
     super(%{jack: :black}, meta)
   end
-
-  @impl true
-  def to_params(_) do
-    %{elo: :ziom}
-  end
 end

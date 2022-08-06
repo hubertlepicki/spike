@@ -16,9 +16,7 @@ defmodule Test.ComplexFormDataWithCallbacks do
     def after_update(struct_before, struct_after, changed_fields) do
       if :name in changed_fields do
         IO.puts(
-          "updated #{struct_before.ref}, name changed from #{struct_before.name} to #{
-            struct_after.name
-          }"
+          "updated #{struct_before.ref}, name changed from #{struct_before.name} to #{struct_after.name}"
         )
       end
 

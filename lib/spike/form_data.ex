@@ -1,12 +1,10 @@
 defmodule Spike.FormData do
   @callback new(params :: map) :: map
   @callback new(params :: map, options :: keyword) :: map
-  @callback to_params(form :: term) :: map
-  @callback to_json(form :: term) :: binary
   @callback after_update(struct_before :: term, struct_after :: term, changed_fields :: list) ::
               term
 
-  @optional_callbacks new: 1, new: 2, to_params: 1, to_json: 1, after_update: 3
+  @optional_callbacks new: 1, new: 2, after_update: 3
 
   defmacro __using__(do: block) do
     quote location: :keep do
@@ -46,21 +44,11 @@ defmodule Spike.FormData do
         |> Map.put_new(:ref, Spike.UUID.generate())
       end
 
-      def to_params(form) do
-        Spike.FormData.Serialization.to_params(form)
-      end
-
-      def to_json(form) do
-        form
-        |> to_params()
-        |> Spike.FormData.Serialization.to_json()
-      end
-
       def after_update(_struct_before, struct_after, _changed_fields) do
         struct_after
       end
 
-      defoverridable new: 1, new: 2, to_params: 1, to_json: 1, after_update: 3
+      defoverridable new: 1, new: 2, after_update: 3
     end
   end
 

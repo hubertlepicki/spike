@@ -550,47 +550,4 @@ defmodule SpikeTest do
              }
     end
   end
-
-  describe "serialization" do
-    setup do
-      form =
-        Test.ComplexFormData.new(%{
-          company: %{
-            name: "AmberBit",
-            country: "Poland"
-          },
-          partners: [
-            %{name: "Hubert"},
-            %{name: "Wojciech"}
-          ],
-          accepts_conditions: "true"
-        })
-
-      {:ok, %{form: form}}
-    end
-
-    test "should convert the given form data to map of params", %{form: form} do
-      assert form.__struct__.to_params(form) == %{
-               "company" => %{
-                 "name" => "AmberBit",
-                 "country" => "Poland"
-               },
-               "partners" => [
-                 %{"name" => "Hubert"},
-                 %{"name" => "Wojciech"}
-               ],
-               "accepts_conditions" => true
-             }
-    end
-
-    test "should convert given form data to JSON", %{form: form} do
-      assert form.__struct__.to_json(form) ==
-               "{\"accepts_conditions\":true,\"company\":{\"country\":\"Poland\",\"name\":\"AmberBit\"},\"partners\":[{\"name\":\"Hubert\"},{\"name\":\"Wojciech\"}]}"
-    end
-  end
-
-  test "allows overwriting callbacks" do
-    form = Test.CustomizedForm.new(%{foo: :bar})
-    assert form.__struct__.to_params(form) == %{elo: :ziom}
-  end
 end
