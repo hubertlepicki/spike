@@ -550,4 +550,20 @@ defmodule SpikeTest do
              }
     end
   end
+
+  describe "Contextual validation" do
+    test "should be possible to add validations to children forms based on values from parent forms" do
+      form = Test.ContextualValidationsForm.new(%{max_budget: 12})
+      form = Spike.append(form, form.ref, :line_items, %{price: 1})
+      assert Spike.valid?(form)
+      form = Spike.append(form, form.ref, :line_items, %{price: 11})
+      assert Spike.valid?(form)
+      form = Spike.append(form, form.ref, :line_items, %{price: 1})
+      refute Spike.valid?(form)
+
+      assert Spike.human_readable_errors(form) == %{
+               "line_items.2.price" => ["exceeds max budget of 12"]
+             }
+    end
+  end
 end

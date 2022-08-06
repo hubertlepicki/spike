@@ -24,6 +24,8 @@ defmodule Spike.FormData do
       field(:__dirty_fields__, {:array, :string}, default: [], private: true)
       field(:ref, :string, private: true)
 
+      Module.put_attribute(__MODULE__, :struct_fields, {:__spike_context__, []})
+
       defstruct @struct_fields
 
       def __struct_fields__() do
@@ -171,7 +173,7 @@ defmodule Spike.FormData do
 
   def errors(struct) do
     struct
-    |> traverse_structs(&get_errors/1)
+    |> traverse_structs(&get_errors/1, [])
     |> List.flatten()
     |> Enum.filter(& &1)
     |> Enum.into(%{})
@@ -179,7 +181,7 @@ defmodule Spike.FormData do
 
   def human_readable_errors(struct) do
     struct
-    |> traverse_struct_paths([], &get_human_readable_errors/1)
+    |> traverse_struct_paths([], &get_human_readable_errors/1, [])
     |> List.flatten()
     |> Enum.filter(& &1)
     |> Enum.into(%{})
@@ -194,7 +196,7 @@ defmodule Spike.FormData do
 
   def dirty_fields(struct) do
     struct
-    |> traverse_structs(&get_dirty_fields/1)
+    |> traverse_structs(&get_dirty_fields/1, [])
     |> List.flatten()
     |> Enum.filter(& &1)
     |> Enum.into(%{})
@@ -344,15 +346,16 @@ defmodule Spike.FormData do
     struct.__dirty_fields__
   end
 
-  defp traverse_structs(nil, _callback), do: []
+  defp traverse_structs(nil, _callback, _context_so_far), do: []
 
-  defp traverse_structs(list, callback) when is_list(list) do
+  defp traverse_structs(list, callback, context_so_far) when is_list(list) do
     list
-    |> Enum.map(&traverse_structs(&1, callback))
+    |> Enum.map(&traverse_structs(&1, callback, context_so_far))
   end
 
-  defp traverse_structs(current_struct, callback) do
-    collected = callback.(current_struct)
+  defp traverse_structs(current_struct, callback, context_so_far) do
+    context_so_far = context_so_far ++ [current_struct]
+    collected = callback.(%{current_struct | __spike_context__: context_so_far})
 
     if Enum.count(collected) > 0 do
       [{current_struct.ref, collected}]
@@ -361,20 +364,23 @@ defmodule Spike.FormData do
     end ++
       (embeds(current_struct)
        |> Enum.map(fn embed ->
-         traverse_structs(Map.get(current_struct, embed), callback)
+         traverse_structs(Map.get(current_struct, embed), callback, context_so_far ++ [embed])
        end))
   end
 
-  defp traverse_struct_paths(nil, _, _callback), do: []
+  defp traverse_struct_paths(nil, _, _callback, _context_so_far), do: []
 
-  defp traverse_struct_paths(list, path, callback) when is_list(list) do
+  defp traverse_struct_paths(list, path, callback, context_so_far) when is_list(list) do
     list
     |> Enum.with_index()
-    |> Enum.map(fn {val, index} -> traverse_struct_paths(val, path ++ ["#{index}"], callback) end)
+    |> Enum.map(fn {val, index} ->
+      traverse_struct_paths(val, path ++ ["#{index}"], callback, context_so_far)
+    end)
   end
 
-  defp traverse_struct_paths(current_struct, path, callback) do
-    collected = callback.(current_struct)
+  defp traverse_struct_paths(current_struct, path, callback, context_so_far) do
+    context_so_far = context_so_far ++ [current_struct]
+    collected = callback.(%{current_struct | __spike_context__: context_so_far})
 
     if Enum.count(collected) > 0 do
       [{path, collected}]
@@ -383,7 +389,12 @@ defmodule Spike.FormData do
     end ++
       (embeds(current_struct)
        |> Enum.map(fn embed ->
-         traverse_struct_paths(Map.get(current_struct, embed), path ++ ["#{embed}"], callback)
+         traverse_struct_paths(
+           Map.get(current_struct, embed),
+           path ++ ["#{embed}"],
+           callback,
+           context_so_far ++ [embed]
+         )
        end))
   end
 

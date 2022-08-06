@@ -14,4 +14,6 @@ defmodule Spike do
   defdelegate set_private(struct, ref, key, value), to: Spike.FormData
   defdelegate has_errors?(struct, ref, key), to: Spike.ErrorHelpers
   defdelegate has_errors?(struct, ref, key, message), to: Spike.ErrorHelpers
+
+  def context(struct), do: struct.__spike_context__ |> Enum.reverse() |> tl() |> Enum.reverse()
 end
