@@ -46,7 +46,7 @@ defmodule Spike.Form do
       => false
       Spike.errors(form)[form.ref]
       => %{accepts_conditions: [acceptance: "must be accepted"], first_name: [presence: "must be present"]}
- 
+
   ## Nested forms with contextual validations
 
   You can have nested forms, supproting nested validations as well, where child item can

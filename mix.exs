@@ -17,7 +17,7 @@ defmodule Spike.MixProject do
       docs: [
         main: "readme",
         logo: "assets/spike-logo.png",
-        extras: ["README.md", "tutorial.md"]
+        extras: ["README.md"]
       ],
       package: package(),
       aliases: aliases()

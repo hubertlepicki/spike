@@ -40,7 +40,6 @@ defmodule Spike do
     errors(form) == %{}
   end
 
-
   @doc """
   Given a Spike form, returns a map of errors, where fields are Strings
   representing where in nested set of forms errors happened and values are errors.
@@ -53,7 +52,6 @@ defmodule Spike do
 
   """
   defdelegate human_readable_errors(form), to: Spike.Form
-
 
   @doc """
   Given a Spike form, returns a map of fields that have been updated since the
@@ -160,7 +158,6 @@ defmodule Spike do
 
   """
   defdelegate set_private(form, ref, field, value), to: Spike.Form
-
 
   @doc """
   Returns `true` if given form, identified by `ref` has error on given `field`.

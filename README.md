@@ -38,7 +38,6 @@ used together with this core library to extend live views or components with
 out-of-the box support for `@form` and `@errors`, as well as default
 implementation of events handling, to build
 
-See [our tutorial](tutorial.md) for a complete walkthrough of adding and using
-Spike, including more advanced features or head straignt to `Spike`, `Spike.Form`
+See the documentation to `Spike`, `Spike.Form`
 and `Spike.Form.Schema` modules for API usage and examples.
 
