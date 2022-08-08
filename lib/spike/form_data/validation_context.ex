@@ -1,5 +1,5 @@
-defmodule Spike.FormData.ValidationContext do
-  import Spike.FormData.ETS
+defmodule Spike.Form.ValidationContext do
+  import Spike.Form.ETS
 
   def get_validation_context(%{ref: ref} = _struct) do
     get_validation_context(ref)

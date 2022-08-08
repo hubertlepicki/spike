@@ -1,8 +1,7 @@
-# Spike
+# Readme
 
-[Spike](https://github.com/hubertlepicki/spike) is a data casting and
-validation library that can make building complex and long-living
-server-memory backed forms in Elixir easier.
+[Spike](https://github.com/hubertlepicki/spike) helps you build stateul,
+server-memory backed forms in Elixir.
 
 If you are struggling with making deep nested Ecto changesets back your forms
 the way you like it, you may have ended up in a right place.
@@ -15,7 +14,7 @@ by adding `spike` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:spike, "~> 0.1.0"}
+    {:spike, "~> 0.2"}
   ]
 end
 ```
@@ -36,9 +35,10 @@ rendered and displayed to user.
 Spike's [LiveView bindings](https://github.com/hubertlepicki/spike-liveview) or
 [Surface UI bindings](https://github.com/hubertlepicki/spike-surface) can be
 used together with this core library to extend live views or components with
-out-of-the box support for `@form_data` and `@errors`, as well as default
+out-of-the box support for `@form` and `@errors`, as well as default
 implementation of events handling, to build
 
 See [our tutorial](tutorial.md) for a complete walkthrough of adding and using
-Spike, including more advanced features.
+Spike, including more advanced features or head straignt to `Spike`, `Spike.Form`
+and `Spike.Form.Schema` modules for API usage and examples.
 

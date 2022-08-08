@@ -1,4 +1,113 @@
-defmodule Spike.FormData do
+defmodule Spike.Form do
+  @moduledoc """
+  Use this module to define your Spike forms.
+
+  ## Simple use cases
+
+  Simple Spike form, with no validation and no nested structs will look like this:
+
+      defmodule MyApp.RegistrationForm do
+        use Spike.Form do
+          field(:first_name, :string)
+          field(:last_name, :string)
+          field(:age, :integer)
+          field(:email, :string)
+          field(:accepts_conditions, :boolean)
+        end
+      end
+
+      form = MyApp.RegistrationForm.new(%{first_name: "Spike"})
+      form = Spike.update(form, form.ref, %{last_name: "Spiegel"})
+      form.first_name
+      => "Spike"
+      form.last_name
+      => "Spiegel"
+
+  ## Adding validations
+
+  Spike uses [Vex](https://github.com/cargosense/vex) as a validation library, so you can add
+  form validations easily:
+
+      defmodule MyApp.RegistrationForm do
+        use Spike.Form do
+          field(:first_name, :string)
+          field(:last_name, :string)
+          field(:age, :integer)
+          field(:email, :string)
+          field(:accepts_conditions, :boolean)
+        end
+
+        validates(:first_name, presence: true)
+        validates(:accepts_conditions, acceptance: true)
+      end
+
+      form = MyApp.RegistrationForm.new(%{})
+      Spike.valid?(form)
+      => false
+      Spike.errors(form)[form.ref]
+      => %{accepts_conditions: [acceptance: "must be accepted"], first_name: [presence: "must be present"]}
+ 
+  ## Nested forms with contextual validations
+
+  You can have nested forms, supproting nested validations as well, where child item can
+  access parent or sibling items by fetching validation context using `Spike.validation_context/1`.
+
+      defmodule MyApp.BudgetPlanner do
+        defmodule LineItem do
+          use Spike.Form do
+            field(:price, :integer)
+            field(:name, :string)
+
+            validates(:name, presence: true)
+            validates(:price, presence: true, by: &__MODULE__.validate_price_within_budget/2)
+          end
+
+          def validate_price_within_budget(_price, this_line_item) do
+            [parent, :line_items] = Spike.validation_context(this_line_item)
+
+            sum =
+              parent.line_items
+              |> Enum.reduce_while(0, fn line_item, acc ->
+                if line_item.ref == this_line_item.ref do
+                  {:halt, acc + line_item.price}
+                else
+                  {:cont, acc + line_item.price}
+                end
+              end)
+
+            if parent.max_budget && sum > parent.max_budget do
+              {:error, "exceeds max budget of #\{parent.max_budget\}"}
+            else
+              :ok
+            end
+          end
+        end
+
+        use Spike.Form do
+          field(:max_budget, :integer)
+          embeds_many(:line_items, __MODULE__.LineItem)
+        end
+      end
+
+  For functions useful to manipulate forms, see [Spike]. For schema definition look
+  into `Spike.Form.Schema`.
+
+  To initialize a Spike form, by casting a map to it's fields (recursively), you can use
+  `new/1` callback.
+
+      form = MyApp.BudgetPlanner.new(%{max_budget: 12, line_items: [%{name: "Cheap one", price: 1}]})
+      Spike.valid?(form)
+      => true
+      form = Spike.append(form, form.ref, :line_items, %{name: "Expensive one", price: 9000})
+      Spike.valid?(form)
+      => false
+      Spike.human_readable_errors(form)
+      => %{"line_items.1.price" => ["exceeds max budget of 12"]}
+
+  In case you need to cast fields marked as private, use `new/2` where second parameter
+  is `[cast_private: true]`.
+  """
+
   @callback new(params :: map) :: map
   @callback new(params :: map, options :: keyword) :: map
   @callback after_update(struct_before :: term, struct_after :: term, changed_fields :: list) ::
@@ -8,12 +117,12 @@ defmodule Spike.FormData do
 
   defmacro __using__(do: block) do
     quote location: :keep do
-      @behaviour Spike.FormData
+      @behaviour Spike.Form
 
-      require Spike.FormData
+      require Spike.Form
       use Vex.Struct
 
-      import Spike.FormData.Schema
+      import Spike.Form.Schema
 
       Module.register_attribute(__MODULE__, :struct_fields, accumulate: true)
       Module.register_attribute(__MODULE__, :schema_fields, accumulate: true)
@@ -40,7 +149,7 @@ defmodule Spike.FormData do
 
       def new(params, options \\ []) do
         %__MODULE__{}
-        |> Spike.FormData.cast(params, cast_private: Keyword.get(options, :cast_private, false))
+        |> Spike.Form.cast(params, cast_private: Keyword.get(options, :cast_private, false))
         |> Map.put_new(:ref, Spike.UUID.generate())
       end
 
@@ -52,8 +161,9 @@ defmodule Spike.FormData do
     end
   end
 
-  import Spike.FormData.{DirtyFields, ValidationContext}
+  import Spike.Form.{DirtyFields, ValidationContext}
 
+  @doc false
   def cast(struct, params, options \\ []) do
     params =
       (params || %{})
@@ -76,20 +186,22 @@ defmodule Spike.FormData do
     |> cast_embeds(embeds(struct), params, options)
   end
 
-  defp tarams_schema_definition(mod, param_keys, cast_private) do
+  defp tarams_schema_definition(mod, param_fields, cast_private) do
     mod.__schema_fields__()
     |> Enum.filter(&(&1.private == false || cast_private))
-    |> Enum.filter(&("#{&1.name}" in param_keys))
+    |> Enum.filter(&("#{&1.name}" in param_fields))
     |> Enum.map(fn definition ->
       {definition.name, [type: definition.type, default: definition.default]}
     end)
     |> Enum.into(%{})
   end
 
+  @doc false
   def update(%{ref: ref} = struct, ref, params) do
     update(struct, params)
   end
 
+  @doc false
   def update(struct, ref, params) do
     update_embeds(struct, ref, params, embeds(struct))
   end
@@ -129,14 +241,17 @@ defmodule Spike.FormData do
     end
   end
 
+  @doc false
   def append(%{ref: ref} = struct, ref, field, params) do
     append(struct, field, params)
   end
 
+  @doc false
   def append(struct, ref, field, params) do
     append_embeds(struct, ref, field, params, embeds(struct))
   end
 
+  @doc false
   defp append(struct, field, params) do
     %{many: true, type: mod} = embed(struct, field)
 
@@ -161,6 +276,7 @@ defmodule Spike.FormData do
     )
   end
 
+  @doc false
   def make_dirty(struct) do
     dirty_fields = fields(struct) ++ embeds(struct)
 
@@ -169,12 +285,14 @@ defmodule Spike.FormData do
     |> make_embeds_dirty(embeds(struct))
   end
 
+  @doc false
   def make_pristine(struct) do
     struct
     |> put_dirty_fields([])
     |> make_embeds_pristine(embeds(struct))
   end
 
+  @doc false
   def errors(struct) do
     struct
     |> traverse_structs(&get_errors/1, [])
@@ -183,6 +301,7 @@ defmodule Spike.FormData do
     |> Enum.into(%{})
   end
 
+  @doc false
   def human_readable_errors(struct) do
     struct
     |> traverse_struct_paths([], &get_human_readable_errors/1, [])
@@ -198,6 +317,7 @@ defmodule Spike.FormData do
     |> Enum.into(%{})
   end
 
+  @doc false
   def dirty_fields(struct) do
     struct
     |> traverse_structs(&get_dirty_fields/1, [])
@@ -206,10 +326,12 @@ defmodule Spike.FormData do
     |> Enum.into(%{})
   end
 
+  @doc false
   def delete(%{ref: ref} = _struct, ref) do
     nil
   end
 
+  @doc false
   def delete(struct, ref) do
     {struct, dirty_embeds} = delete_embeds(struct, ref, embeds(struct), [])
 
@@ -247,35 +369,35 @@ defmodule Spike.FormData do
 
   defp ensure_has_ref(struct), do: struct
 
-  defp cast_embeds(form_data, [], _params, _options), do: form_data
+  defp cast_embeds(form, [], _params, _options), do: form
 
-  defp cast_embeds(form_data, [h | t], params, options) do
+  defp cast_embeds(form, [h | t], params, options) do
     if Map.keys(params) |> Enum.member?("#{h}") do
-      form_data
-      |> cast_embed(embed(form_data, h), params["#{h}"], options)
+      form
+      |> cast_embed(embed(form, h), params["#{h}"], options)
     else
-      form_data
+      form
     end
     |> cast_embeds(t, params, options)
   end
 
-  defp cast_embed(form_data, %{one: true} = embed, %{__struct__: _} = new_struct, _options) do
-    form_data
+  defp cast_embed(form, %{one: true} = embed, %{__struct__: _} = new_struct, _options) do
+    form
     |> Map.put(embed.name, new_struct)
   end
 
-  defp cast_embed(form_data, %{one: true} = embed, map, options) do
-    form_data
+  defp cast_embed(form, %{one: true} = embed, map, options) do
+    form
     |> Map.put(embed.name, embed.type.new(map, options))
   end
 
-  defp cast_embed(form_data, %{many: true} = _embed, nil, _options), do: form_data
+  defp cast_embed(form, %{many: true} = _embed, nil, _options), do: form
 
-  defp cast_embed(form_data, %{many: true} = embed, [], _options),
-    do: form_data |> Map.put(embed.name, [])
+  defp cast_embed(form, %{many: true} = embed, [], _options),
+    do: form |> Map.put(embed.name, [])
 
-  defp cast_embed(form_data, %{many: true} = embed, list, options) do
-    form_data
+  defp cast_embed(form, %{many: true} = embed, list, options) do
+    form
     |> Map.put(
       embed.name,
       Enum.map(list, fn
@@ -473,30 +595,32 @@ defmodule Spike.FormData do
     end
   end
 
-  def set_private(%{ref: ref} = form, ref, key, value) do
-    %{form | key => value}
+  @doc false
+  def set_private(%{ref: ref} = form, ref, field, value) do
+    %{form | field => value}
   end
 
-  def set_private(form, ref, key, value) do
-    set_embeds_private(form, ref, key, value, embeds(form))
+  @doc false
+  def set_private(form, ref, field, value) do
+    set_embeds_private(form, ref, field, value, embeds(form))
   end
 
-  defp set_embeds_private(struct, _ref, _key, _value, []), do: struct
+  defp set_embeds_private(struct, _ref, _field, _value, []), do: struct
 
-  defp set_embeds_private(struct, ref, key, value, [embed | rest]) do
+  defp set_embeds_private(struct, ref, field, value, [embed | rest]) do
     embed_field = Map.get(struct, embed)
 
     case embed_field do
       nil ->
-        set_embeds_private(struct, ref, key, value, rest)
+        set_embeds_private(struct, ref, field, value, rest)
 
       list when is_list(list) ->
-        %{struct | embed => Enum.map(embed_field, &set_private(&1, ref, key, value))}
-        |> set_embeds_private(ref, key, value, rest)
+        %{struct | embed => Enum.map(embed_field, &set_private(&1, ref, field, value))}
+        |> set_embeds_private(ref, field, value, rest)
 
       _ ->
-        %{struct | embed => set_private(embed_field, ref, key, value)}
-        |> set_embeds_private(ref, key, value, rest)
+        %{struct | embed => set_private(embed_field, ref, field, value)}
+        |> set_embeds_private(ref, field, value, rest)
     end
   end
 end

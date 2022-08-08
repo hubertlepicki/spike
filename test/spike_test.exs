@@ -1,11 +1,12 @@
 defmodule SpikeTest do
   use ExUnit.Case
   import ExUnit.CaptureIO
+  doctest Spike
 
-  describe "Spike.FormDataData.new/1" do
-    test "initializes simple form form_data from params" do
+  describe "Spike.FormData.new/1" do
+    test "initializes simple form form from params" do
       form =
-        Test.SimpleFormData.new(%{
+        Test.SimpleForm.new(%{
           first_name: "Spike",
           last_name: "Spiegel",
           age: "36",
@@ -22,7 +23,7 @@ defmodule SpikeTest do
 
     test "autogenerates ref field" do
       form =
-        Test.SimpleFormData.new(%{
+        Test.SimpleForm.new(%{
           first_name: "Spike",
           last_name: "Spiegel",
           age: "36",
@@ -33,9 +34,9 @@ defmodule SpikeTest do
       assert form.ref != nil
     end
 
-    test "initializes nested form_data" do
+    test "initializes nested form" do
       form =
-        Test.ComplexFormData.new(%{
+        Test.ComplexForm.new(%{
           company: %{
             name: "AmberBit",
             country: "Poland"
@@ -58,7 +59,7 @@ defmodule SpikeTest do
 
     test "sets embeds_many fields to [] by default" do
       form =
-        Test.ComplexFormData.new(%{
+        Test.ComplexForm.new(%{
           company: %{
             name: "AmberBit",
             country: "Poland"
@@ -159,7 +160,7 @@ defmodule SpikeTest do
   describe "Spike.valid?/1 && Spike.errors/1 && Spike.has_errors?/3 && Spike.has_errors?/4 && Spike.human_readable_errors/1" do
     test "allows validations" do
       form =
-        Test.SimpleFormData.new(%{
+        Test.SimpleForm.new(%{
           last_name: "Spiegel",
           accepts_conditions: "false"
         })
@@ -184,8 +185,8 @@ defmodule SpikeTest do
       refute Spike.has_errors?(form, form.ref, :last_name, "must be present")
     end
 
-    test "validates nested form_data" do
-      form = Test.ComplexFormData.new(%{})
+    test "validates nested form" do
+      form = Test.ComplexForm.new(%{})
 
       refute Spike.valid?(form)
 
@@ -201,7 +202,7 @@ defmodule SpikeTest do
                "accepts_conditions" => ["must be accepted"]
              }
 
-      form = Test.ComplexFormData.new(%{company: %{}})
+      form = Test.ComplexForm.new(%{company: %{}})
 
       refute Spike.valid?(form)
 
@@ -222,9 +223,9 @@ defmodule SpikeTest do
   end
 
   describe "Spike.update/2" do
-    test "updates the form_datas and casts data" do
+    test "updates the forms and casts data" do
       form =
-        Test.ComplexFormData.new(%{
+        Test.ComplexForm.new(%{
           company: %{
             name: "AmberBit",
             country: "Poland"
@@ -253,7 +254,7 @@ defmodule SpikeTest do
 
     test "updates the embeds and casts data" do
       form =
-        Test.ComplexFormData.new(%{
+        Test.ComplexForm.new(%{
           company: %{
             name: "AmberBit",
             country: "Poland"
@@ -275,7 +276,7 @@ defmodule SpikeTest do
 
     test "updates the embeds and preinitialized form data" do
       form =
-        Test.ComplexFormData.new(%{
+        Test.ComplexForm.new(%{
           company: %{
             name: "AmberBit",
             country: "Poland"
@@ -284,7 +285,7 @@ defmodule SpikeTest do
           accepts_conditions: "true"
         })
 
-      preinitialized = Test.ComplexFormData.PartnerFormData.new(%{name: "Hubert"})
+      preinitialized = Test.ComplexForm.PartnerForm.new(%{name: "Hubert"})
 
       form_ref = form.ref
 
@@ -299,9 +300,9 @@ defmodule SpikeTest do
       assert form.ref == form_ref
     end
 
-    test "updates the form_datas and changes validation" do
+    test "updates the forms and changes validation" do
       form =
-        Test.ComplexFormData.new(%{
+        Test.ComplexForm.new(%{
           company: %{
             name: "AmberBit",
             country: "Poland"
@@ -323,7 +324,7 @@ defmodule SpikeTest do
 
     test "runs update callbacks on struct and all it's parents" do
       form =
-        Test.ComplexFormDataWithCallbacks.new(%{
+        Test.ComplexFormWithCallbacks.new(%{
           company: %{
             name: "AmberBit",
             country: "Poland"
@@ -355,7 +356,7 @@ defmodule SpikeTest do
 
     test "doesn't update the form or embeds if nothing changed" do
       form =
-        Test.ComplexFormData.new(%{
+        Test.ComplexForm.new(%{
           company: %{
             name: "AmberBit",
             country: "Poland"
@@ -383,9 +384,9 @@ defmodule SpikeTest do
   end
 
   describe "Spike.delete/2" do
-    test "deletes the form_data by ref" do
+    test "deletes the form by ref" do
       form =
-        Test.ComplexFormData.new(%{
+        Test.ComplexForm.new(%{
           company: %{
             name: "AmberBit",
             country: "Poland"
@@ -419,9 +420,9 @@ defmodule SpikeTest do
   end
 
   describe "Spike.append/2" do
-    test "appends and initializes form_data at the end of the embeds_many list" do
+    test "appends and initializes form at the end of the embeds_many list" do
       form =
-        Test.ComplexFormData.new(%{
+        Test.ComplexForm.new(%{
           company: %{
             name: "AmberBit",
             country: "Poland"
@@ -440,7 +441,7 @@ defmodule SpikeTest do
 
     test "appends already initialzied form data at the end of embeds_many list" do
       form =
-        Test.ComplexFormData.new(%{
+        Test.ComplexForm.new(%{
           company: %{
             name: "AmberBit",
             country: "Poland"
@@ -453,12 +454,12 @@ defmodule SpikeTest do
         |> Spike.append(
           form.ref,
           :partners,
-          Test.ComplexFormData.PartnerFormData.new(%{name: "Hubert"})
+          Test.ComplexForm.PartnerForm.new(%{name: "Hubert"})
         )
         |> Spike.append(
           form.ref,
           :partners,
-          Test.ComplexFormData.PartnerFormData.new(%{name: "Wojciech"})
+          Test.ComplexForm.PartnerForm.new(%{name: "Wojciech"})
         )
 
       assert hd(form.partners).name == "Hubert"
@@ -469,7 +470,7 @@ defmodule SpikeTest do
   describe "ditry tracking" do
     setup do
       form =
-        Test.ComplexFormData.new(%{
+        Test.ComplexForm.new(%{
           company: %{
             name: "AmberBit",
             country: "Poland"

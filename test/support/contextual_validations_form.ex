@@ -4,7 +4,7 @@ defmodule Test.ContextualValidationsForm do
   end
 
   defmodule LineItem do
-    use Spike.FormData do
+    use Spike.Form do
       field(:price, :integer)
 
       validates(:price, by: &__MODULE__.validate_price_within_budget/2)
@@ -31,7 +31,7 @@ defmodule Test.ContextualValidationsForm do
     end
   end
 
-  use Spike.FormData do
+  use Spike.Form do
     field(:max_budget, :integer)
     embeds_many(:line_items, __MODULE__.LineItem)
   end

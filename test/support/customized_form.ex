@@ -1,5 +1,5 @@
 defmodule Test.CustomizedForm do
-  use Spike.FormData do
+  use Spike.Form do
     field(:name, :string)
   end
 

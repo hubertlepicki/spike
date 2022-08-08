@@ -1,6 +1,6 @@
-defmodule Test.ComplexFormData do
-  defmodule CompanyFormData do
-    use Spike.FormData do
+defmodule Test.ComplexForm do
+  defmodule CompanyForm do
+    use Spike.Form do
       field(:name, :string)
       field(:country, :string)
     end
@@ -8,16 +8,16 @@ defmodule Test.ComplexFormData do
     validates(:name, presence: true)
   end
 
-  defmodule PartnerFormData do
-    use Spike.FormData do
+  defmodule PartnerForm do
+    use Spike.Form do
       field(:name, :string)
     end
   end
 
-  use Spike.FormData do
+  use Spike.Form do
     field(:accepts_conditions, :boolean)
-    embeds_one(:company, __MODULE__.CompanyFormData)
-    embeds_many(:partners, __MODULE__.PartnerFormData)
+    embeds_one(:company, __MODULE__.CompanyForm)
+    embeds_many(:partners, __MODULE__.PartnerForm)
   end
 
   validates(:company, presence: true)

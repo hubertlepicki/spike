@@ -1,5 +1,5 @@
 defmodule Test.TypeTestForm do
-  use Spike.FormData do
+  use Spike.Form do
     field(:name, :string)
     field(:age, :integer)
     field(:accepts_conditions, :boolean)

@@ -1,5 +1,5 @@
 defmodule Test.PrivateForm do
-  use Spike.FormData do
+  use Spike.Form do
     field(:public_field, :string)
     field(:private_field, :string, private: true)
     field(:meta, :map, private: true, default: %{})
@@ -7,7 +7,7 @@ defmodule Test.PrivateForm do
   end
 
   defmodule Subform do
-    use Spike.FormData do
+    use Spike.Form do
       field(:public_field, :string)
       field(:private_field, :string, private: true)
     end

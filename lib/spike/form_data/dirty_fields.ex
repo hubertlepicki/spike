@@ -1,4 +1,6 @@
-defmodule Spike.FormData.DirtyFields do
+defmodule Spike.Form.DirtyFields do
+  @moduledoc false
+
   def get_dirty_fields(%{ref: _ref, __dirty_fields__: dirty_fields} = _struct) do
     dirty_fields
   end

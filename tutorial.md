@@ -77,7 +77,7 @@ for that we will need to crate the following `lib/signup/signup_form.ex` module:
 
 ```
 defmodule Signup.SignupForm do
-  use Spike.FormData do
+  use Spike.Form do
     field(:company_name, :string)
   end
 end
@@ -206,7 +206,7 @@ The desired behavior of `form.available_plans` is as follows:
   end
 ```
 
-As you can see, we now initialize our form with `Spike.FormData.new/2` function,
+As you can see, we now initialize our form with `Spike.Form.new/2` function,
 and pass `cast_private: true` as options to it. This will allow us to set
 private fields, because by default they are not being initialized from the first
 argument - `params`.
@@ -235,7 +235,7 @@ Let's fix it by adding the key to our form struct:
 
 ```
 defmodule Signup.SignupForm do
-  use Spike.FormData do
+  use Spike.Form do
     field(:company_name, :string)
     field(:available_plans, {:list, :map}, private: true) # <-- add this line
   end
@@ -271,7 +271,7 @@ defmodule Signup.SignupForm do
     %{id: 3, name: "Enterprise", price: 9000, max_users: :infinity}
   ]
 
-  use Spike.FormData do
+  use Spike.Form do
     field(:company_name, :string)
     field(:available_plans, {:array, :map}, default: @available_plans, private: true)
   end
@@ -302,7 +302,7 @@ Either way, we also need to allow the user to choose the plan, so we will need
 
 ```
 defmodule Signup.SignupForm do
-  use Spike.FormData do
+  use Spike.Form do
     field(:company_name, :string)
     field(:available_plans, {:array, :map}, private: true)
     field(:plan_id, :integer) # <-- add this line, note :integer
@@ -349,7 +349,7 @@ first one, and use plain LiveView in this tutorial. The usage of Surface UI
 bindings is analogous and do not require much changes.
 
 Let's start by introducing a `lib/signup_web/signup_live.ex` LiveView.
-`spike_liveview` expects the LiveViews to define `:form_data` and `:errors`
+`spike_liveview` expects the LiveViews to define `:form` and `:errors`
 assigns. The first one holds our struct with data, the second one is used to
 display validation errors, and can be initialized with `Spike.errors/1`:
 
@@ -358,14 +358,14 @@ defmodule SignupWeb.SignupLive do
   use SignupWeb, :form_live_view # <- note we defined it in signup_web.ex
 
   def mount(_params, _, socket) do
-    form_data = init_form_data()
+    form = init_form()
 
     {:ok,
      socket
      |> assign(%{
        success: false,
-       form_data: form_data, # <- this is required by :form_live_view
-       errors: Spike.errors(form_data) # <- this as well needs to be set
+       form: form, # <- this is required by :form_live_view
+       errors: Spike.errors(form) # <- this as well needs to be set
      })}
   end
 
@@ -376,7 +376,7 @@ defmodule SignupWeb.SignupLive do
     <h4>Debug info</h4>
     Form data:
     <pre>
-      <%= inspect @form_data, pretty: true %>
+      <%= inspect @form, pretty: true %>
     </pre>
     Errors:
     <pre>
@@ -389,7 +389,7 @@ defmodule SignupWeb.SignupLive do
     """
   end
 
-  defp init_form_data do
+  defp init_form do
     Signup.SignupForm.new(%{available_plans: find_plans()}, cast_private: true)
   end
 
@@ -439,19 +439,19 @@ form input with label:
 defmodule SignupWeb.SignupLive do
   ...
 
-  def label_component(%{ref: _ref, text: _text, key: _key} = assigns) do
+  def label_component(%{ref: _ref, text: _text, field: _field} = assigns) do
     ~H"""
     <label for={"#{@ref}_#{@key}"}><%= @text %></label>
     """
   end
 
-  def input_component(%{type: "text", key: _, form_data: _, label: _} = assigns) do
+  def input_component(%{type: "text", field: _, form: _, label: _} = assigns) do
     ~H"""
     <div>
-      <.label_component text={@label} ref={@form_data.ref} key={@key} />
+      <.label_component text={@label} ref={@form.ref} field={@key} />
 
-      <Spike.LiveView.FormField.form_field key={@key} form_data={@form_data}>
-        <input id={"#{@form_data.ref}_#{@key}"} name="value" type="text" value={@form_data |> Map.get(@key)} />
+      <Spike.LiveView.FormField.form_field field={@key} form={@form}>
+        <input id={"#{@form.ref}_#{@key}"} name="value" type="text" value={@form |> Map.get(@key)} />
       </Spike.LiveView.FormField.form_field>
     </div>
     """
@@ -463,7 +463,7 @@ defmodule SignupWeb.SignupLive do
     ~H"""
     <h2>Example signup form:</h2>
 
-    <.input_component type="text" key={:company_name} form_data={@form_data} label="Company name:" />
+    <.input_component type="text" field={:company_name} form={@form} label="Company name:" />
 
     <hr/>
     <h4>Debug info</h4>
@@ -483,15 +483,15 @@ let's add appropriate helper component and use it:
 ```
   ...
 
-  def input_component(%{type: "select", key: _, form_data: _, options: _} = assigns) do
+  def input_component(%{type: "select", field: _, form: _, options: _} = assigns) do
     ~H"""
     <div>
-      <.label_component text={@label} ref={@form_data.ref} key={@key} />
+      <.label_component text={@label} ref={@form.ref} field={@key} />
 
-      <Spike.LiveView.FormField.form_field key={@key} form_data={@form_data}>
-        <select id={"#{@form_data.ref}_#{@key}"} name="value">
+      <Spike.LiveView.FormField.form_field field={@key} form={@form}>
+        <select id={"#{@form.ref}_#{@key}"} name="value">
           <%= for {value, text} <- @options do %>
-            <option value={value || ""} selected={@form_data |> Map.get(@key) == value}><%= text %></option>
+            <option value={value || ""} selected={@form |> Map.get(@key) == value}><%= text %></option>
           <% end %>
         </select>
       </Spike.LiveView.FormField.form_field>
@@ -503,17 +503,17 @@ let's add appropriate helper component and use it:
     ~H"""
     <h2>Example signup form:</h2>
 
-    <.input_component type="text" key={:company_name} form_data={@form_data} label="Company name:" />
-    <.input_component type="select" key={:plan_id} form_data={@form_data} label="Choose your plan:" options={plan_options(@form_data)} />
+    <.input_component type="text" field={:company_name} form={@form} label="Company name:" />
+    <.input_component type="select" field={:plan_id} form={@form} label="Choose your plan:" options={plan_options(@form)} />
 
     ...
     """
   end
 
   # returns a list of tuples that can be passed as options to component above
-  defp plan_options(form_data) do
+  defp plan_options(form) do
     [{nil, "Please select..."}] ++
-      Enum.map(form_data.available_plans, fn plan ->
+      Enum.map(form.available_plans, fn plan ->
         {plan.id, "#{plan.name} (#{plan.price} USD / month)"}
       end)
   end
@@ -529,14 +529,14 @@ doing that in our `mount` function:
 
 ```
   def mount(_params, _, socket) do
-    form_data = init_form_data()
+    form = init_form()
 
     {:ok,
      socket
      |> assign(%{
        success: false,
-       form_data: form_data,
-       errors: Spike.errors(form_data) # <- this generates map with errors
+       form: form,
+       errors: Spike.errors(form) # <- this generates map with errors
      })}
   end
 ```
@@ -581,7 +581,7 @@ The validations using `Vex` need to be added to our form:
 
 ```
 defmodule Signup.SignupForm do
-  use Spike.FormData do
+  use Spike.Form do
     field(:company_name, :string)
     field(:available_plans, {:array, :map}, private: true)
     field(:plan_id, :integer)
@@ -590,10 +590,10 @@ defmodule Signup.SignupForm do
   validates :company_name, presence: true
   validates(:plan_id, presence: true, by: &__MODULE__.validate_plan_id/2)
 
-  def validate_plan_id(nil, _form_data), do: :ok
+  def validate_plan_id(nil, _form), do: :ok
 
-  def validate_plan_id(value, form_data) do
-    form_data.available_plans
+  def validate_plan_id(value, form) do
+    form.available_plans
     |> Enum.map(& &1.id)
     |> Enum.member?(value)
     |> if do
@@ -616,16 +616,16 @@ errors on `dirty` fields: https://github.com/hubertlepicki/spike-liveview/blob/m
 Let's start by passing `@erorrs` to components we already built:
 
 ```
-    <.input_component type="text" key={:company_name} form_data={@form_data} label="Company name:" errors={@errors} />
-    <.input_component type="select" key={:plan_id} form_data={@form_data} label="Choose your plan:" options={plan_options(@form_data)} errors={@errors} />
+    <.input_component type="text" field={:company_name} form={@form} label="Company name:" errors={@errors} />
+    <.input_component type="select" field={:plan_id} form={@form} label="Choose your plan:" options={plan_options(@form)} errors={@errors} />
 ```
 
 We also need to write our component helper to display field errors:
 
 ```
-  def errors_component(%{form_data: _, key: _, errors: _} = assigns) do
+  def errors_component(%{form: _, field: _, errors: _} = assigns) do
     ~H"""
-    <Spike.LiveView.Errors.errors let={field_errors} key={@key} form_data={@form_data} errors={@errors}>
+    <Spike.LiveView.Errors.errors let={field_errors} field={@key} form={@form} errors={@errors}>
       <span class="error">
         <%= field_errors |> Enum.map(fn {_k, v} -> v end) |> Enum.join(", ") %>
       </span>
@@ -637,36 +637,36 @@ We also need to write our component helper to display field errors:
 And finally use it:
 
 ```
-  def input_component(%{type: "text", key: _, form_data: _, label: _, errors: _} = assigns) do
+  def input_component(%{type: "text", field: _, form: _, label: _, errors: _} = assigns) do
     ~H"""
     <div>
-      <.label_component text={@label} ref={@form_data.ref} key={@key} />
+      <.label_component text={@label} ref={@form.ref} field={@key} />
 
-      <Spike.LiveView.FormField.form_field key={@key} form_data={@form_data}>
-        <input id={"#{@form_data.ref}_#{@key}"} name="value" type="text" value={@form_data |> Map.get(@key)} />
+      <Spike.LiveView.FormField.form_field field={@key} form={@form}>
+        <input id={"#{@form.ref}_#{@key}"} name="value" type="text" value={@form |> Map.get(@key)} />
       </Spike.LiveView.FormField.form_field>
 
       <!-- Added the line below -->
-      <.errors_component form_data={@form_data} key={@key} errors={@errors} />
+      <.errors_component form={@form} field={@key} errors={@errors} />
     </div>
     """
   end
 
-  def input_component(%{type: "select", key: _, form_data: _, options: _, errors: _} = assigns) do
+  def input_component(%{type: "select", field: _, form: _, options: _, errors: _} = assigns) do
     ~H"""
     <div>
-      <.label_component text={@label} ref={@form_data.ref} key={@key} />
+      <.label_component text={@label} ref={@form.ref} field={@key} />
 
-      <Spike.LiveView.FormField.form_field key={@key} form_data={@form_data}>
-        <select id={"#{@form_data.ref}_#{@key}"} name="value">
+      <Spike.LiveView.FormField.form_field field={@key} form={@form}>
+        <select id={"#{@form.ref}_#{@key}"} name="value">
           <%= for {value, text} <- @options do %>
-            <option value={value || ""} selected={@form_data |> Map.get(@key) == value}><%= text %></option>
+            <option value={value || ""} selected={@form |> Map.get(@key) == value}><%= text %></option>
           <% end %>
         </select>
       </Spike.LiveView.FormField.form_field>
 
       <!-- Added the line below -->
-      <.errors_component form_data={@form_data} key={@key} errors={@errors} />
+      <.errors_component form={@form} field={@key} errors={@errors} />
     </div>
     """
   end
@@ -695,8 +695,8 @@ and also addition of mentioned button:
     ~H"""
     <h2>Signup form:</h2>
  
-    <.input_component type="text" key={:company_name} form_data={@form_data} label="Company name:" errors={@errors} />
-    <.input_component type="select" key={:plan_id} form_data={@form_data} label="Choose your plan:" options={plan_options(@form_data)} errors={@errors} />
+    <.input_component type="text" field={:company_name} form={@form} label="Company name:" errors={@errors} />
+    <.input_component type="select" field={:plan_id} form={@form} label="Choose your plan:" options={plan_options(@form)} errors={@errors} />
 
     <!-- Add this button to submit form -->
     <a href="#" class="button" phx-click="submit">Submit</a>
@@ -715,7 +715,7 @@ We also need a callback to handle form submits:
       # perform business logic of signing up company here
       {:noreply, socket |> assign(:success, true)} # <-- settig to true to display success page
     else
-      {:noreply, socket |> assign(:form_data, Spike.make_dirty(socket.assigns.form_data))} # <- note
+      {:noreply, socket |> assign(:form, Spike.make_dirty(socket.assigns.form))} # <- note
     end
   end
 ```

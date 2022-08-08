@@ -1,4 +1,6 @@
-defmodule Spike.FormData.ETS do
+defmodule Spike.Form.ETS do
+  @moduledoc false
+
   def ensure_initialized(table_name) do
     table_name
     |> get_ets_reference()

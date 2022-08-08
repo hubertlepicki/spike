@@ -1,4 +1,4 @@
-defmodule Spike.FormData.Schema do
+defmodule Spike.Form.Schema do
   defmacro field(name, type \\ :string, opts \\ []) do
     quote do
       Module.put_attribute(__MODULE__, :struct_fields, {unquote(name), unquote(opts)[:default]})
