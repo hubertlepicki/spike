@@ -22,6 +22,7 @@ defmodule Spike.FormData do
       unquote(block)
 
       field(:ref, :string, private: true)
+      field(:__dirty_fields__, {:array, :atom}, private: true, default: [])
 
       defstruct @struct_fields
 
