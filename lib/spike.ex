@@ -15,5 +15,15 @@ defmodule Spike do
   defdelegate has_errors?(struct, ref, key), to: Spike.ErrorHelpers
   defdelegate has_errors?(struct, ref, key, message), to: Spike.ErrorHelpers
 
-  def context(struct), do: struct.__spike_context__ |> Enum.reverse() |> tl() |> Enum.reverse()
+  def validation_context(struct) do
+    struct
+    |> Spike.FormData.ValidationContext.get_validation_context()
+    |> case do
+      list when list != [] > 0 ->
+        list |> Enum.reverse() |> tl() |> Enum.reverse()
+
+      otherwise ->
+        otherwise
+    end
+  end
 end

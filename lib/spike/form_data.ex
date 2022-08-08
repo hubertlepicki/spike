@@ -21,10 +21,7 @@ defmodule Spike.FormData do
 
       unquote(block)
 
-      field(:__dirty_fields__, {:array, :string}, default: [], private: true)
       field(:ref, :string, private: true)
-
-      Module.put_attribute(__MODULE__, :struct_fields, {:__spike_context__, []})
 
       defstruct @struct_fields
 
@@ -53,6 +50,8 @@ defmodule Spike.FormData do
       defoverridable new: 1, new: 2, after_update: 3
     end
   end
+
+  import Spike.FormData.{DirtyFields, ValidationContext}
 
   def cast(struct, params, options \\ []) do
     params =
@@ -102,11 +101,11 @@ defmodule Spike.FormData do
       |> cast(params)
 
     updated_fields = updated_fields(struct_before, struct_after)
-    dirty_fields = (struct.__dirty_fields__ ++ updated_fields) |> Enum.uniq() |> Enum.sort()
+    dirty_fields = get_dirty_fields(struct) ++ updated_fields
 
     struct.__struct__.after_update(
       struct_before,
-      %{struct_after | __dirty_fields__: dirty_fields},
+      put_dirty_fields(struct_after, dirty_fields),
       updated_fields
     )
   end
@@ -141,7 +140,7 @@ defmodule Spike.FormData do
     %{many: true, type: mod} = embed(struct, field)
 
     current_structs = Map.get(struct, field)
-    dirty_fields = (struct.__dirty_fields__ ++ [field]) |> Enum.uniq() |> Enum.sort()
+    dirty_fields = get_dirty_fields(struct) ++ [field]
 
     new_child =
       case params do
@@ -152,22 +151,26 @@ defmodule Spike.FormData do
           mod.new(params)
       end
 
-    %{
-      struct
-      | field => current_structs ++ [new_child],
-        :__dirty_fields__ => dirty_fields
-    }
+    put_dirty_fields(
+      %{
+        struct
+        | field => current_structs ++ [new_child]
+      },
+      dirty_fields
+    )
   end
 
   def make_dirty(struct) do
-    dirty_fields = (fields(struct) ++ embeds(struct)) |> Enum.uniq() |> Enum.sort()
+    dirty_fields = fields(struct) ++ embeds(struct)
 
-    %{struct | :__dirty_fields__ => dirty_fields}
+    struct
+    |> put_dirty_fields(dirty_fields)
     |> make_embeds_dirty(embeds(struct))
   end
 
   def make_pristine(struct) do
-    %{struct | :__dirty_fields__ => []}
+    struct
+    |> put_dirty_fields([])
     |> make_embeds_pristine(embeds(struct))
   end
 
@@ -209,11 +212,8 @@ defmodule Spike.FormData do
   def delete(struct, ref) do
     {struct, dirty_embeds} = delete_embeds(struct, ref, embeds(struct), [])
 
-    %{
-      struct
-      | :__dirty_fields__ =>
-          (struct.__dirty_fields__ ++ dirty_embeds) |> Enum.uniq() |> Enum.sort()
-    }
+    struct
+    |> put_dirty_fields(get_dirty_fields(struct) ++ dirty_embeds)
   end
 
   defp fields(struct) when is_struct(struct) do
@@ -342,10 +342,6 @@ defmodule Spike.FormData do
     end)
   end
 
-  defp get_dirty_fields(struct) do
-    struct.__dirty_fields__
-  end
-
   defp traverse_structs(nil, _callback, _context_so_far), do: []
 
   defp traverse_structs(list, callback, context_so_far) when is_list(list) do
@@ -355,17 +351,24 @@ defmodule Spike.FormData do
 
   defp traverse_structs(current_struct, callback, context_so_far) do
     context_so_far = context_so_far ++ [current_struct]
-    collected = callback.(%{current_struct | __spike_context__: context_so_far})
+    collected = callback.(put_validation_context(current_struct, context_so_far))
 
-    if Enum.count(collected) > 0 do
-      [{current_struct.ref, collected}]
-    else
-      []
-    end ++
-      (embeds(current_struct)
-       |> Enum.map(fn embed ->
-         traverse_structs(Map.get(current_struct, embed), callback, context_so_far ++ [embed])
-       end))
+    ret =
+      if Enum.count(collected) > 0 do
+        [{current_struct.ref, collected}]
+      else
+        []
+      end ++
+        (embeds(current_struct)
+         |> Enum.map(fn embed ->
+           traverse_structs(Map.get(current_struct, embed), callback, context_so_far ++ [embed])
+         end))
+
+    if context_so_far == [current_struct] do
+      purge_validation_context()
+    end
+
+    ret
   end
 
   defp traverse_struct_paths(nil, _, _callback, _context_so_far), do: []
@@ -380,7 +383,7 @@ defmodule Spike.FormData do
 
   defp traverse_struct_paths(current_struct, path, callback, context_so_far) do
     context_so_far = context_so_far ++ [current_struct]
-    collected = callback.(%{current_struct | __spike_context__: context_so_far})
+    collected = callback.(put_validation_context(current_struct, context_so_far))
 
     if Enum.count(collected) > 0 do
       [{path, collected}]
@@ -421,9 +424,9 @@ defmodule Spike.FormData do
 
   defp maybe_mark_embed_as_dirty_and_run_callback(updated_struct, struct, embed) do
     if Map.get(updated_struct, embed) != Map.get(struct, embed) do
-      dirty_fields = (updated_struct.__dirty_fields__ ++ [embed]) |> Enum.uniq() |> Enum.sort()
+      dirty_fields = get_dirty_fields(updated_struct) ++ [embed]
 
-      struct.__struct__.after_update(struct, %{updated_struct | __dirty_fields__: dirty_fields}, [
+      struct.__struct__.after_update(struct, put_dirty_fields(updated_struct, dirty_fields), [
         embed
       ])
     else

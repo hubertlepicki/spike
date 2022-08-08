@@ -11,7 +11,7 @@ defmodule Test.ContextualValidationsForm do
     end
 
     def validate_price_within_budget(_price, this_line_item) do
-      [parent, :line_items] = Spike.context(this_line_item)
+      [parent, :line_items] = Spike.validation_context(this_line_item)
 
       sum =
         parent.line_items
