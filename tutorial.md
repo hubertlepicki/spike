@@ -727,7 +727,7 @@ errors, no matter if user touched the form or not. You can use
 `Spike.make_pristine/1` to mark all of the struct as pristine, clearing the
 dirty tracking.
 
-5. Nested forms
+## 5. Nested forms
 
 This section needs expanding.
 
@@ -736,7 +736,7 @@ tutorial in
 [spike_examples](https://github.com/hubertlepicki/spike_example/blob/main/lib/spike_example/signup_form.ex)
 for reference.
 
-6. Nested forms validations
+## 6. Nested forms validations
 
 This section needs expanding.
 
@@ -745,3 +745,8 @@ other (parent, child or a sibling alike) using `Spike.validation_context/1`
 function. For example check out the validation of email address fields on
 [SpikeExample.SignupForm.Coworker
 form](https://github.com/hubertlepicki/spike_example/blob/main/lib/spike_example/signup_form/coworker.ex#L18).
+
+## 7. More comprehensive example
+
+Check out [SpikeExample app](https://github.com/hubertlepicki/spike_example) for more complete usage.
+
