@@ -7,7 +7,7 @@ defmodule Spike.MixProject do
     [
       app: :spike,
       description: @description,
-      version: "0.1.1",
+      version: "0.2.0",
       elixir: "~> 1.13",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -19,8 +19,7 @@ defmodule Spike.MixProject do
         logo: "assets/spike-logo.png",
         extras: ["README.md"]
       ],
-      package: package(),
-      aliases: aliases()
+      package: package()
     ]
   end
 
@@ -55,13 +54,5 @@ defmodule Spike.MixProject do
       {:uuid, "~> 1.1"},
       {:ex_doc, "~> 0.27", only: :dev, runtime: false}
     ]
-  end
-
-  defp aliases do
-    [docs: ["docs", &copy_images/1]]
-  end
-
-  defp copy_images(_) do
-    File.cp!("./assets/tutorial/3_1.png", "./doc/3_1.png")
   end
 end

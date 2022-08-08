@@ -1,4 +1,8 @@
 defmodule Spike.Form.Schema do
+  @doc """
+    Contains macros used to define fields and embeds.
+  """
+
   defmacro field(name, type \\ :string, opts \\ []) do
     quote do
       Module.put_attribute(__MODULE__, :struct_fields, {unquote(name), unquote(opts)[:default]})
