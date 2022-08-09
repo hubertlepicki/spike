@@ -38,6 +38,35 @@ used together with this core library to extend live views or components with
 out-of-the box support for `@form` and `@errors`, as well as default
 implementation of events handling, to build
 
+Spike forms are based on Elixir structs, that declare fields, associations and
+validations - similar to Ecto schemas or ActiveRecord models. These forms,
+however, live entirely in the memory. Let's consider a registration form. We
+have to define a module, with fields and validations:
+
+```
+defmodule MyApp.RegistrationForm do
+  use Spike.Form do
+    field(:first_name, :string)
+    field(:last_name, :string)
+    field(:age, :integer)
+    field(:email, :string)
+    field(:accepts_conditions, :boolean, default: false)
+  end
+
+  validates(:first_name, presence: true)
+  validates(:accepts_conditions, acceptance: true)
+end
+```
+
+
+form = MyApp.RegistrationForm.new(%{})
+Spike.valid?(form)
+=> false
+Spike.errors(form)[form.ref]
+=> %{accepts_conditions: [acceptance: "must be accepted"], first_name: [presence: "must be present"]}
+
 See the documentation to `Spike`, `Spike.Form`
 and `Spike.Form.Schema` modules for API usage and examples.
+
+For more complete example have a look at the tutorial available on [spike-liveview documentation](https://hexdocs.pm/spike-liveview/tutorial.html).
 
