@@ -7,7 +7,7 @@ defmodule Spike.MixProject do
     [
       app: :spike,
       description: @description,
-      version: "0.2.1",
+      version: "0.2.2",
       elixir: "~> 1.13",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
