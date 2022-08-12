@@ -58,15 +58,16 @@ defmodule MyApp.RegistrationForm do
 end
 ```
 
-
+```
 form = MyApp.RegistrationForm.new(%{})
 Spike.valid?(form)
 => false
 Spike.errors(form)[form.ref]
 => %{accepts_conditions: [acceptance: "must be accepted"], first_name: [presence: "must be present"]}
+```
 
-See the documentation to `Spike`, `Spike.Form`
-and `Spike.Form.Schema` modules for API usage and examples.
+See the documentation for `Spike`, `Spike.Form`,
+and `Spike.Form.Schema` modules for usage and examples.
 
-For more complete example have a look at the tutorial available on [spike-liveview documentation](https://hexdocs.pm/spike-liveview/tutorial.html).
+For more complete example of usage with LiveView and Surface UI, have a look at our [example application](https://spikeexample.fly.dev/).
 
