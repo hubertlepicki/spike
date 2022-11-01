@@ -86,6 +86,15 @@ defmodule SpikeTest do
       assert form.accepts_conditions == true
       assert form.dob == ~D[1992-01-01]
     end
+
+    test "casts data with custom function" do
+      form =
+        Test.CustomCastForm.new(%{
+          age: 36
+        })
+
+      assert form.age == "36"
+    end
   end
 
   describe "private fields" do

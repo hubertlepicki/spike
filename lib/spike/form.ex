@@ -191,7 +191,12 @@ defmodule Spike.Form do
     |> Enum.filter(&(&1.private == false || cast_private))
     |> Enum.filter(&("#{&1.name}" in param_fields))
     |> Enum.map(fn definition ->
-      {definition.name, [type: definition.type, default: definition.default]}
+      if definition[:cast_func] do
+        {definition.name,
+         [type: definition.type, default: definition.default, cast_func: definition.cast_func]}
+      else
+        {definition.name, [type: definition.type, default: definition.default]}
+      end
     end)
     |> Enum.into(%{})
   end

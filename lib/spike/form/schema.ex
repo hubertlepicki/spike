@@ -11,7 +11,8 @@ defmodule Spike.Form.Schema do
         name: unquote(name),
         type: unquote(type),
         default: unquote(opts)[:default],
-        private: unquote(opts)[:private] == true
+        private: unquote(opts)[:private] == true,
+        cast_func: unquote(opts)[:cast_func]
       })
     end
   end
