@@ -253,7 +253,7 @@ defmodule SpikeTest do
         form
         |> Spike.update(hubert_ref, %{name: "Huberto"})
         |> Spike.update(hubert_ref, %{name: "Umberto"})
-        |> Spike.update(form_ref, %{accepts_conditions: "false"})
+        |> Spike.update(%{accepts_conditions: "false"})
 
       assert form.accepts_conditions == false
       assert (form.partners |> hd()).name == "Umberto"
@@ -276,7 +276,7 @@ defmodule SpikeTest do
 
       form =
         form
-        |> Spike.update(form_ref, %{partners: [%{name: "Hubert"}, %{name: "Wojciech"}]})
+        |> Spike.update(%{partners: [%{name: "Hubert"}, %{name: "Wojciech"}]})
 
       assert (form.partners |> hd()).name == "Hubert"
       assert (form.partners |> Enum.reverse() |> hd()).name == "Wojciech"
@@ -300,7 +300,7 @@ defmodule SpikeTest do
 
       form =
         form
-        |> Spike.update(form_ref, %{
+        |> Spike.update(%{
           partners: [preinitialized]
         })
 
@@ -329,6 +329,27 @@ defmodule SpikeTest do
 
       refute Spike.valid?(form)
       assert Spike.errors(form) == %{form.company.ref => %{name: [presence: "must be present"]}}
+    end
+
+    test "doesn't require to pass the ref if there is only one embed" do
+      form =
+        Test.ComplexForm.new(%{
+          company: %{
+            name: "AmberBit",
+            country: "Poland"
+          },
+          partners: [
+            %{name: "Hubert"},
+            %{name: "Wojciech"}
+          ],
+          accepts_conditions: "true"
+        })
+
+      form =
+        form
+        |> Spike.update(%{accepts_conditions: false})
+
+      assert form.accepts_conditions == false
     end
 
     test "runs update callbacks on struct and all it's parents" do
@@ -383,7 +404,7 @@ defmodule SpikeTest do
       form =
         form
         |> Spike.update(hubert_ref, %{name: "Hubert"})
-        |> Spike.update(form_ref, %{accepts_conditions: "true"})
+        |> Spike.update(%{accepts_conditions: "true"})
 
       assert form.accepts_conditions == true
       assert (form.partners |> hd()).name == "Hubert"
@@ -501,7 +522,7 @@ defmodule SpikeTest do
     test "should track the fields that were updated", %{form: form} = initial do
       form =
         form
-        |> Spike.update(form.ref, %{accepts_conditions: "false"})
+        |> Spike.update(%{accepts_conditions: "false"})
 
       assert Spike.dirty_fields(form) == %{form.ref => [:accepts_conditions]}
 

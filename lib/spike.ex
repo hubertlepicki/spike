@@ -115,6 +115,20 @@ defmodule Spike do
   defdelegate update(form, ref, params), to: Spike.Form
 
   @doc """
+  Updates a top level Spike form with given params. Marks updated fields as dirty.
+
+      iex> form = Test.SimpleForm.new(%{})
+      iex> form = Spike.update(form, %{first_name: "Spike", last_name: "Spiegel", accepts_conditions: "1"})
+      iex> Spike.errors(form)
+      %{}
+
+  """
+
+  def update(%{ref: ref} = form, params) do
+    update(form, ref, params)
+  end
+
+  @doc """
   Updates `embeds_many` association on given Spike form, appending the new item at the end
   of the existing list.
 
