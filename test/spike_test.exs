@@ -597,4 +597,38 @@ defmodule SpikeTest do
              }
     end
   end
+
+  describe "Callbacks" do
+    test "should allow for creation of dependent fields with after_update callback" do
+      form = Test.DependentForm.new()
+
+      assert form.accept_all == false
+      assert form.accept_one == false
+      assert form.accept_two == false
+      assert form.accept_three == false
+
+      form = Spike.update(form, %{accept_all: true})
+
+      assert form.accept_all == true
+      assert form.accept_one == true
+      assert form.accept_two == true
+      assert form.accept_three == true
+
+      form = Spike.update(form, %{accept_all: true})
+
+      assert form.accept_all == false
+      assert form.accept_one == true
+      assert form.accept_two == true
+      assert form.accept_three == true
+
+      form = Test.DependentForm.new()
+
+      form = Spike.update(form, %{accept_one: true, accept_two: true, accept_three: true})
+
+      assert form.accept_all == true
+      assert form.accept_one == true
+      assert form.accept_two == true
+      assert form.accept_three == true
+    end
+  end
 end

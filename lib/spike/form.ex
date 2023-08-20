@@ -147,7 +147,7 @@ defmodule Spike.Form do
         @schema_embeds
       end
 
-      def new(params, options \\ []) do
+      def new(params \\ %{}, options \\ []) do
         %__MODULE__{}
         |> Spike.Form.cast(params, cast_private: Keyword.get(options, :cast_private, false))
         |> Map.put_new(:ref, Spike.UUID.generate())
@@ -157,7 +157,7 @@ defmodule Spike.Form do
         struct_after
       end
 
-      defoverridable new: 1, new: 2, after_update: 3
+      defoverridable new: 0, new: 1, new: 2, after_update: 3
     end
   end
 
