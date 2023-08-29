@@ -146,6 +146,26 @@ defmodule Spike do
   defdelegate append(form, ref, field, params), to: Spike.Form
 
   @doc """
+  Updates `embeds_many` association on the top-level Spike form, appending the new item at the end
+  of the existing list.
+
+      iex> form = Test.ComplexForm.new(%{company: %{name: "ACME Corp."}, partners: []})
+      iex> form.partners
+      []
+      iex> form = Spike.append(form, :partners, %{name: "Hubert"})
+      iex> form.partners |> Enum.map(& &1.name)
+      ["Hubert"]
+      iex> form = Spike.append(form, :partners, %{name: "Wojciech"})
+      iex> form.partners |> Enum.map(& &1.name)
+      ["Hubert", "Wojciech"]
+
+  """
+
+  def append(%{ref: ref} = form, field, params) do
+    append(form, ref, field, params)
+  end
+
+  @doc """
   Deletes a form from a Spike form by it's `ref`. Useful to remove items from `embeds_many` or `embeds_one`.
 
       iex> form = Test.ComplexForm.new(%{company: %{name: "ACME Corp."}, partners: [%{name: "John"}]})
