@@ -132,6 +132,7 @@ defmodule Spike.Form do
 
       field(:ref, :string, private: true)
       field(:__dirty_fields__, {:array, :atom}, private: true, default: [])
+      field(:__invalid_fields__, {:array, :atom}, private: true, default: [])
 
       defstruct @struct_fields
 
@@ -165,25 +166,60 @@ defmodule Spike.Form do
 
   @doc false
   def cast(struct, params, options \\ []) do
-    params =
-      (params || %{})
-      |> Mappable.to_map(keys: :strings, shallow: true)
+    params = (params || %{}) |> Mappable.to_map(keys: :strings, shallow: true)
 
-    casted_params =
-      params
-      |> Tarams.cast!(
-        tarams_schema_definition(
-          struct.__struct__,
-          Map.keys(params),
-          Keyword.get(options, :cast_private, false)
+    with {:ok, casted_params} <-
+           params
+           |> Tarams.cast(
+             tarams_schema_definition(
+               struct.__struct__,
+               Map.keys(params),
+               Keyword.get(options, :cast_private, false)
+             )
+           ) do
+      struct =
+        struct
+        |> ensure_has_ref()
+        |> Map.merge(
+          casted_params
+          |> Mappable.to_map(keys: :atoms, shallow: true, skip_unknown_atoms: true)
         )
-      )
-      |> Mappable.to_map(keys: :atoms, shallow: true)
+        |> cast_embeds(embeds(struct), params, options)
 
-    struct
-    |> ensure_has_ref()
-    |> Map.merge(casted_params)
-    |> cast_embeds(embeds(struct), params, options)
+      invalid_fields =
+        struct.__invalid_fields__
+        |> Enum.filter(&(!Enum.member?(Map.keys(params), "#{&1}")))
+
+      %{struct | __invalid_fields__: invalid_fields}
+    else
+      {:error, cast_errors} ->
+        invalid_keys = Map.keys(cast_errors) |> Enum.map(&"#{&1}")
+
+        valid_params =
+          params
+          |> Enum.filter(fn {k, _v} -> !Enum.member?(invalid_keys, k) end)
+          |> Enum.into(%{})
+          |> Mappable.to_map(keys: :atoms, skip_unknown_atoms: true)
+
+        invalid_params =
+          params
+          |> Enum.filter(fn {k, _v} -> Enum.member?(invalid_keys, k) end)
+          |> Enum.into(%{})
+          |> Mappable.to_map(keys: :atoms, skip_unknown_atoms: true)
+
+        new_struct = cast(struct, valid_params, options)
+
+        new_struct =
+          new_struct
+          |> Map.merge(invalid_params)
+
+        invalid_fields =
+          (new_struct.__invalid_fields__ ++ Map.keys(cast_errors))
+          |> Enum.uniq()
+          |> Enum.filter(&(!Enum.member?(valid_params |> Map.keys(), &1)))
+
+        %{new_struct | __invalid_fields__: invalid_fields}
+    end
   end
 
   defp tarams_schema_definition(mod, param_fields, cast_private) do
@@ -451,6 +487,7 @@ defmodule Spike.Form do
   defp get_errors(struct) do
     struct
     |> Vex.errors()
+    |> append_type_cast_errors(struct)
     |> Enum.reduce(%{}, fn {:error, field, type, message}, acc ->
       list = acc[field] || []
 
@@ -462,12 +499,21 @@ defmodule Spike.Form do
   defp get_human_readable_errors(struct) do
     struct
     |> Vex.errors()
+    |> append_type_cast_errors(struct)
     |> Enum.reduce(%{}, fn {:error, field, _type, message}, acc ->
       list = acc[field] || []
 
       acc
       |> Map.put("#{field}", list ++ [message])
     end)
+  end
+
+  defp append_type_cast_errors(errors_list, %{__invalid_fields__: []}) do
+    errors_list
+  end
+
+  defp append_type_cast_errors(errors_list, %{__invalid_fields__: invalid_fields}) do
+    errors_list ++ Enum.map(invalid_fields, &{:error, &1, :type_cast, "is invalid"})
   end
 
   defp traverse_structs(nil, _callback, _context_so_far), do: []

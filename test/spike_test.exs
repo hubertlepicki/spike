@@ -87,6 +87,72 @@ defmodule SpikeTest do
       assert form.dob == ~D[1992-01-01]
     end
 
+    test "keeps the original value when casting fails, but fails on validation" do
+      form =
+        Test.TypeTestForm.new(%{
+          name: 1,
+          # yeah right
+          age: "-",
+          accepts_conditions: "sure",
+          dob: "hello there",
+          inserted_at: -2
+        })
+
+      assert form.name == 1
+      assert form.age == "-"
+      assert form.accepts_conditions == "sure"
+      assert form.dob == "hello there"
+      assert form.inserted_at == -2
+
+      refute Spike.valid?(form)
+
+      assert Spike.errors(form) == %{
+               form.ref => %{
+                 name: [type_cast: "is invalid"],
+                 age: [type_cast: "is invalid"],
+                 accepts_conditions: [type_cast: "is invalid"],
+                 dob: [type_cast: "is invalid"],
+                 inserted_at: [type_cast: "is invalid"]
+               }
+             }
+
+      form = Spike.update(form, %{name: "Hubert"})
+
+      refute Spike.valid?(form)
+
+      assert Spike.errors(form) == %{
+               form.ref => %{
+                 age: [type_cast: "is invalid"],
+                 accepts_conditions: [type_cast: "is invalid"],
+                 dob: [type_cast: "is invalid"],
+                 inserted_at: [type_cast: "is invalid"]
+               }
+             }
+
+      form =
+        Spike.update(form, %{
+          dob: -1,
+          accepts_conditions: "1",
+          age: "30",
+          inserted_at: "2021-01-01 00:00:00"
+        })
+
+      assert Spike.errors(form) == %{
+               form.ref => %{
+                 dob: [type_cast: "is invalid"]
+               }
+             }
+
+      assert form.dob == -1
+      assert form.accepts_conditions == true
+      assert form.name == "Hubert"
+
+      form = Spike.update(form, %{dob: "1900-01-01"})
+
+      assert Spike.valid?(form)
+      assert Spike.errors(form) == %{}
+    end
+
     test "casts data with custom function" do
       form =
         Test.CustomCastForm.new(%{
