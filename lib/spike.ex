@@ -123,7 +123,6 @@ defmodule Spike do
       %{}
 
   """
-
   def update(%{ref: ref} = form, params) do
     update(form, ref, params)
   end
@@ -192,6 +191,21 @@ defmodule Spike do
 
   """
   defdelegate set_private(form, ref, field, value), to: Spike.Form
+
+  @doc """
+  Allows you to update fields in a top-level Spike form that were marked as private.
+
+      iex> form = Test.PrivateForm.new(%{private_field: "foo"}, cast_private: true)
+      iex> form = Spike.update(form, %{private_field: "bar"})
+      iex> form.private_field
+      "foo"
+      iex> form = Spike.set_private(form, :private_field, "bar")
+      iex> form.private_field
+      "bar"
+  """
+  def set_private(%{ref: ref} = form, field, value) do
+    set_private(form, ref, field, value)
+  end
 
   @doc """
   Returns `true` if given form, identified by `ref` has error on given `field`.
