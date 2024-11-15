@@ -7,11 +7,11 @@ defmodule Test.ContextualValidationsForm do
     use Spike.Form do
       field(:price, :integer)
 
-      validates(:price, by: &__MODULE__.validate_price_within_budget/2)
+      validates(:price, by: &__MODULE__.validate_price_within_budget/3)
     end
 
-    def validate_price_within_budget(_price, this_line_item) do
-      [parent, :line_items] = Spike.validation_context(this_line_item)
+    def validate_price_within_budget(_price, _this_line_item, validation_context) do
+      [parent, :line_items, this_line_item] = validation_context
 
       sum =
         parent.line_items

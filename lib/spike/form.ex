@@ -162,7 +162,7 @@ defmodule Spike.Form do
     end
   end
 
-  import Spike.Form.{DirtyFields, ValidationContext}
+  import Spike.Form.DirtyFields
 
   @doc false
   def cast(struct, params, options \\ []) do
@@ -336,7 +336,7 @@ defmodule Spike.Form do
   @doc false
   def errors(struct) do
     struct
-    |> traverse_structs(&get_errors/1, [])
+    |> traverse_structs(&get_errors/2, [])
     |> List.flatten()
     |> Enum.filter(& &1)
     |> Enum.into(%{})
@@ -345,7 +345,7 @@ defmodule Spike.Form do
   @doc false
   def human_readable_errors(struct) do
     struct
-    |> traverse_struct_paths([], &get_human_readable_errors/1, [])
+    |> traverse_struct_paths([], &get_human_readable_errors/2, [])
     |> List.flatten()
     |> Enum.filter(& &1)
     |> Enum.into(%{})
@@ -484,9 +484,14 @@ defmodule Spike.Form do
     make_pristine(struct)
   end
 
-  defp get_errors(struct) do
+  defp get_errors(struct, validation_context) do
+    settings =
+      struct
+      |> Vex.Extract.settings()
+      |> wrap_by_3_arity_validations_in_context_closure(validation_context)
+
     struct
-    |> Vex.errors()
+    |> Vex.errors(settings)
     |> append_type_cast_errors(struct)
     |> Enum.reduce(%{}, fn {:error, field, type, message}, acc ->
       list = acc[field] || []
@@ -496,15 +501,41 @@ defmodule Spike.Form do
     end)
   end
 
-  defp get_human_readable_errors(struct) do
+  defp get_human_readable_errors(struct, validation_context) do
+    settings =
+      struct
+      |> Vex.Extract.settings()
+      |> wrap_by_3_arity_validations_in_context_closure(validation_context)
+
     struct
-    |> Vex.errors()
+    |> Vex.errors(settings)
     |> append_type_cast_errors(struct)
     |> Enum.reduce(%{}, fn {:error, field, _type, message}, acc ->
       list = acc[field] || []
 
       acc
       |> Map.put("#{field}", list ++ [message])
+    end)
+  end
+
+  defp wrap_by_3_arity_validations_in_context_closure(vex_settings, validation_context)
+       when is_map(vex_settings) do
+    vex_settings
+    |> Enum.map(fn {field, validations} ->
+      {field, wrap_by_3_arity_validations_in_context_closure(validations, validation_context)}
+    end)
+    |> Enum.into(%{})
+  end
+
+  defp wrap_by_3_arity_validations_in_context_closure(validations, validation_context)
+       when is_list(validations) do
+    validations
+    |> Enum.map(fn
+      {:by, fun} when is_function(fun, 3) ->
+        {:by, fn value, struct -> fun.(value, struct, validation_context) end}
+
+      otherwise ->
+        otherwise
     end)
   end
 
@@ -525,7 +556,13 @@ defmodule Spike.Form do
 
   defp traverse_structs(current_struct, callback, context_so_far) do
     context_so_far = context_so_far ++ [current_struct]
-    collected = callback.(put_validation_context(current_struct, context_so_far))
+
+    collected =
+      if :erlang.fun_info(callback)[:arity] == 2 do
+        callback.(current_struct, context_so_far)
+      else
+        callback.(current_struct)
+      end
 
     ret =
       if Enum.count(collected) > 0 do
@@ -537,10 +574,6 @@ defmodule Spike.Form do
          |> Enum.map(fn embed ->
            traverse_structs(Map.get(current_struct, embed), callback, context_so_far ++ [embed])
          end))
-
-    if context_so_far == [current_struct] do
-      purge_validation_context()
-    end
 
     ret
   end
@@ -557,7 +590,13 @@ defmodule Spike.Form do
 
   defp traverse_struct_paths(current_struct, path, callback, context_so_far) do
     context_so_far = context_so_far ++ [current_struct]
-    collected = callback.(put_validation_context(current_struct, context_so_far))
+
+    collected =
+      if :erlang.fun_info(callback)[:arity] == 2 do
+        callback.(current_struct, context_so_far)
+      else
+        callback.(current_struct)
+      end
 
     if Enum.count(collected) > 0 do
       [{path, collected}]

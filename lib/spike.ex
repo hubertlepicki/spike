@@ -217,25 +217,4 @@ defmodule Spike do
 
   """
   defdelegate has_errors?(form, ref, field, message), to: Spike.ErrorHelpers
-
-  @doc """
-  This function should only be used from within "by" validations, where context
-  of parent forms is required. The first element of returned list will be
-  the top-level form, followed by association name, and another form (if present)
-  followed by assciation name etc.
-
-  This is useful when in a child form you want to perform a validation that relies
-  on value that lives in a parent form or a sibling in `embeds_many`.
-  """
-  def validation_context(form) do
-    form
-    |> Spike.Form.ValidationContext.get_validation_context()
-    |> case do
-      list when is_list(list) and length(list) > 1 ->
-        list |> Enum.reverse() |> tl() |> Enum.reverse()
-
-      otherwise ->
-        otherwise
-    end
-  end
 end
