@@ -231,7 +231,7 @@ defmodule Spike do
     form
     |> Spike.Form.ValidationContext.get_validation_context()
     |> case do
-      list when list != [] > 0 ->
+      list when is_list(list) and length(list) > 1 ->
         list |> Enum.reverse() |> tl() |> Enum.reverse()
 
       otherwise ->

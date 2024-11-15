@@ -23,5 +23,5 @@
   "telemetry": {:hex, :telemetry, "1.0.0", "0f453a102cdf13d506b7c0ab158324c337c41f1cc7548f0bc0e130bbf0ae9452", [:rebar3], [], "hexpm", "73bc09fa59b4a0284efb4624335583c528e07ec9ae76aca96ea0673850aec57a"},
   "uuid": {:hex, :uuid, "1.1.8", "e22fc04499de0de3ed1116b770c7737779f226ceefa0badb3592e64d5cfb4eb9", [:mix], [], "hexpm", "c790593b4c3b601f5dc2378baae7efaf5b3d73c4c6456ba85759905be792f2ac"},
   "valdi": {:hex, :valdi, "0.5.0", "b686378c33de1cd35b4fe6f60598d88d10a9a2c5d914a243433158a078607b23", [:mix], [{:decimal, "~> 2.1", [hex: :decimal, repo: "hexpm", optional: false]}], "hexpm", "a375904658a7175d77546785338ab927a0cb7723b3fd24f0890510cdadf5ba27"},
-  "vex": {:hex, :vex, "0.9.0", "613ea5eb3055662e7178b83e25b2df0975f68c3d8bb67c1645f0573e1a78d606", [:mix], [], "hexpm", "c69fff44d5c8aa3f1faee71bba1dcab05dd36364c5a629df8bb11751240c857f"},
+  "vex": {:hex, :vex, "0.9.2", "fe061acc9e0907d983d46b51bf35d58176f0fe6eb7ba3b33c9336401bf42b6d1", [:mix], [], "hexpm", "76e709a9762e98c6b462dfce92e9b5dfbf712839227f2da8add6dd11549b12cb"},
 }
