@@ -50,7 +50,7 @@ defmodule Spike.Form do
   ## Nested forms with contextual validations
 
   You can have nested forms, supproting nested validations as well, where child item can
-  access parent or sibling items by fetching validation context using `Spike.validation_context/1`.
+  access parent or sibling items by fetching validation context.
 
       defmodule MyApp.BudgetPlanner do
         defmodule LineItem do
@@ -62,8 +62,8 @@ defmodule Spike.Form do
             validates(:price, presence: true, by: &__MODULE__.validate_price_within_budget/2)
           end
 
-          def validate_price_within_budget(_price, this_line_item) do
-            [parent, :line_items] = Spike.validation_context(this_line_item)
+          def validate_price_within_budget(_price, this_line_item, validation_context) do
+            [parent, :line_items] = validation_context 
 
             sum =
               parent.line_items
