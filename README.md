@@ -1,10 +1,8 @@
 # Readme
 
-[Spike](https://github.com/hubertlepicki/spike) helps you build stateul,
-server-memory backed forms in Elixir.
+[Spike](https://github.com/hubertlepicki/spike) simplifies the process of creating and using forms in Elixir/Phoenix/LiveView/Surface UI that are not backed or not mapped directly to database tables.
 
-If you are struggling with making deep nested Ecto changesets back your forms
-the way you like it, you may have ended up in a right place.
+If you are struggling with making deeply nested forms work with Ecto Changesets, this library may be for you.
 
 ## Installation
 
@@ -14,7 +12,7 @@ by adding `spike` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:spike, "~> 0.2"}
+    {:spike, "~> 0.3"}
   ]
 end
 ```
@@ -30,7 +28,7 @@ Spike can be used on it's own, or with
 Basic usage consists on creating an Elixir module, which represents your form
 and stores both: data, that the user can manipulate using UI controls
 (via LiveView or otherwise), and data that is necessary for the form to be
-rendered and displayed to user.
+rendered and displayed to user or validated on the server.
 
 Spike's [LiveView bindings](https://github.com/hubertlepicki/spike-liveview) or
 [Surface UI bindings](https://github.com/hubertlepicki/spike-surface) can be

@@ -105,7 +105,7 @@ defmodule Spike.Form do
       => %{"line_items.1.price" => ["exceeds max budget of 12"]}
 
   In case you need to cast fields marked as private, use `new/2` where second parameter
-  is `[cast_private: true]`.
+  is `[allow_private_fields: true]`.
   """
 
   @callback new(params :: map) :: map
@@ -150,7 +150,9 @@ defmodule Spike.Form do
 
       def new(params \\ %{}, options \\ []) do
         %__MODULE__{}
-        |> Spike.Form.cast(params, cast_private: Keyword.get(options, :cast_private, false))
+        |> Spike.Form.cast(params,
+          allow_private_fields: Keyword.get(options, :allow_private_fields, false)
+        )
         |> Map.put_new(:ref, Spike.UUID.generate())
       end
 
@@ -174,7 +176,7 @@ defmodule Spike.Form do
              tarams_schema_definition(
                struct.__struct__,
                Map.keys(params),
-               Keyword.get(options, :cast_private, false)
+               Keyword.get(options, :allow_private_fields, false)
              )
            ) do
       struct =
@@ -222,9 +224,9 @@ defmodule Spike.Form do
     end
   end
 
-  defp tarams_schema_definition(mod, param_fields, cast_private) do
+  defp tarams_schema_definition(mod, param_fields, allow_private_fields) do
     mod.__schema_fields__()
-    |> Enum.filter(&(&1.private == false || cast_private))
+    |> Enum.filter(&(&1.private == false || allow_private_fields))
     |> Enum.filter(&("#{&1.name}" in param_fields))
     |> Enum.map(fn definition ->
       if definition[:cast_func] do

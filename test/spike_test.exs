@@ -3,7 +3,7 @@ defmodule SpikeTest do
   import ExUnit.CaptureIO
   doctest Spike
 
-  describe "Spike.FormData.new/1" do
+  describe "Spike.new/1" do
     test "initializes simple form form from params" do
       form =
         Test.SimpleForm.new(%{
@@ -164,7 +164,7 @@ defmodule SpikeTest do
   end
 
   describe "private fields" do
-    test "should be able to set private fields on new/2 if cast_private: true" do
+    test "should be able to set private fields on new/2 if allow_private_fields: true" do
       ref = Spike.UUID.generate()
 
       form =
@@ -175,7 +175,7 @@ defmodule SpikeTest do
             private_field: "world",
             subform: %{public_field: "hola", private_field: "el mundo"}
           },
-          cast_private: true
+          allow_private_fields: true
         )
 
       assert form.public_field == "hello"
@@ -185,7 +185,7 @@ defmodule SpikeTest do
       assert form.subform.private_field == "el mundo"
     end
 
-    test "should not be able to set private fields on new/2 if cast_private: false" do
+    test "should not be able to set private fields on new/2 if allow_private_fields: false" do
       ref = Spike.UUID.generate()
 
       form =
@@ -515,7 +515,7 @@ defmodule SpikeTest do
     end
   end
 
-  describe "Spike.append/2" do
+  describe "Spike.append/3 and Spike.append/4" do
     test "appends and initializes form at the end of the embeds_many list" do
       form =
         Test.ComplexForm.new(%{
@@ -528,7 +528,7 @@ defmodule SpikeTest do
 
       form =
         form
-        |> Spike.append(form.ref, :partners, %{name: "Hubert"})
+        |> Spike.append(:partners, %{name: "Hubert"})
         |> Spike.append(form.ref, :partners, %{name: "Wojciech"})
 
       assert hd(form.partners).name == "Hubert"
@@ -548,7 +548,6 @@ defmodule SpikeTest do
       form =
         form
         |> Spike.append(
-          form.ref,
           :partners,
           Test.ComplexForm.PartnerForm.new(%{name: "Hubert"})
         )

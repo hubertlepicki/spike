@@ -181,7 +181,7 @@ defmodule Spike do
   @doc """
   Allows you to update fields in a Spike form that were marked as private.
 
-      iex> form = Test.PrivateForm.new(%{private_field: "foo"}, cast_private: true)
+      iex> form = Test.PrivateForm.new(%{private_field: "foo"}, allow_private_fields: true)
       iex> form = Spike.update(form, form.ref, %{private_field: "bar"})
       iex> form.private_field
       "foo"
@@ -195,7 +195,7 @@ defmodule Spike do
   @doc """
   Allows you to update fields in a top-level Spike form that were marked as private.
 
-      iex> form = Test.PrivateForm.new(%{private_field: "foo"}, cast_private: true)
+      iex> form = Test.PrivateForm.new(%{private_field: "foo"}, allow_private_fields: true)
       iex> form = Spike.update(form, %{private_field: "bar"})
       iex> form.private_field
       "foo"
