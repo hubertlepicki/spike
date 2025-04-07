@@ -541,6 +541,16 @@ defmodule Spike.Form do
     end)
   end
 
+  defp wrap_by_3_arity_validations_in_context_closure(validations, validation_context)
+       when is_function(validations, 3) do
+    fn value, struct -> validations.(value, struct, validation_context) end
+  end
+
+  defp wrap_by_3_arity_validations_in_context_closure(validations, _validation_context)
+       when is_function(validations, 2) do
+    validations
+  end
+
   defp append_type_cast_errors(errors_list, %{__invalid_fields__: []}) do
     errors_list
   end

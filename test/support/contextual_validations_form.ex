@@ -7,7 +7,7 @@ defmodule Test.ContextualValidationsForm do
     use Spike.Form do
       field(:price, :integer)
 
-      validates(:price, by: &__MODULE__.validate_price_within_budget/3)
+      validates(:price, &__MODULE__.validate_price_within_budget/3)
     end
 
     def validate_price_within_budget(_price, _this_line_item, validation_context) do
